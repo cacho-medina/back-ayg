@@ -27,8 +27,8 @@ router.post(
 router.post("/login", login);
 router.post("/create-admin", validateUser, signUpUser);
 //////////////////GET///////////////////////////////////////////////////////
-router.get("/", getUsers);
-router.get("/:id", getUserById);
+router.get("/", authTokenJwt, authRole(["admin"]), getUsers);
+router.get("/:id", authTokenJwt, authRole(["admin"]), getUserById);
 //////////////////PUT///////////////////////////////////////////////////////
 router.put(
     "/update",

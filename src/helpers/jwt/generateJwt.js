@@ -4,7 +4,8 @@ const generateJwt = (id, email, role) => {
     try {
         const payload = { id, email, role };
         const token = jwt.sign(payload, process.env.JWT_SECRET_KEY, {
-            expiresIn: "8h",
+            //el token expira luego de 30 dias de ser creado
+            expiresIn: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30,
         });
         return token;
     } catch (error) {

@@ -1,13 +1,32 @@
 import User from "../models/User.js";
 import bcrypt from "bcrypt";
 import generateJwt from "../helpers/jwt/generateJwt.js";
+import { serialize } from "cookie";
 
 ///////////////////OBTENER DATOS DE USUARIOS///////////////////
-
+//si se realiza una consulta sin especificar los parametros
+//se utilizaran los valores predeterminados: page -> 1 - limit -> 10
 export const getUsers = async (req, res) => {
+    // Establece los valores predeterminados para página y límite
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
     try {
-        const userList = await User.findAll();
-        res.status(200).json(userList);
+        const { count, rows: users } = await User.findAndCountAll({
+            limit,
+            offset,
+        });
+
+        // Calcula el número total de páginas
+        const totalPages = Math.ceil(count / limit);
+
+        // Devuelve la lista de usuarios junto con información de paginación
+        res.json({
+            users,
+            currentPage: page,
+            totalPages,
+            totalUsers: count,
+        });
     } catch (error) {
         console.error(error);
         res.status(400).json({ message: "Users not found" });
@@ -17,6 +36,9 @@ export const getUsers = async (req, res) => {
 export const getUserById = async (req, res) => {
     try {
         const user = await User.findByPk(req.params.id);
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
         res.status(200).json(user);
     } catch (error) {
         console.error(error);
@@ -91,7 +113,19 @@ export const login = async (req, res) => {
 
         // Generar token JWT
         const token = generateJwt(user.id, user.email, user.role);
+        //enviar token en cabecera de la response mediante una cookie con el modulo cookie
+        //serializa el token
+        const serialized = serialize("loginAccessToken", token, {
+            httpOnly: true,
+            //secure: process.env.NODE_ENV === "production",
+            sameSite: "none",
+            maxAge: 1000 * 60 * 60 * 24 * 30,
+            path: "/",
+        });
 
+        res.setHeader("Set-Cookie", serialized);
+
+        //actualmente se esta enviando el token dentro del cuerpo de la respuesta
         res.status(200).json({
             message: `User logged in as ${user.role}!`,
             user: {
@@ -100,7 +134,7 @@ export const login = async (req, res) => {
                 name: user.name,
                 role: user.role,
             },
-            token,
+            token, //borrar del cuerpo de response al entrar en production
         });
     } catch (error) {
         console.error(error);
