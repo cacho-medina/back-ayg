@@ -6,6 +6,7 @@ import {
     deleteUser,
     updateUserInfo,
     changeUserStatus,
+    logout,
 } from "../controllers/user.controllers.js";
 import { Router } from "express";
 import authRole from "../middleware/authRole.js";
@@ -25,6 +26,7 @@ router.post(
     signUpUser
 );
 router.post("/login", login);
+router.post("/logout", authTokenJwt, logout);
 router.post("/create-admin", validateUser, signUpUser);
 //////////////////GET///////////////////////////////////////////////////////
 router.get("/", authTokenJwt, authRole(["admin"]), getUsers);

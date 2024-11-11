@@ -142,6 +142,31 @@ export const login = async (req, res) => {
     }
 };
 
+///////////////////CIERRE DE SESION DE USUARIOS///////////////////
+export const logout = async (req, res) => {
+    try {
+        //enviar token en cabecera de la response mediante una cookie con el modulo cookie
+        //serializa el token
+        const serializedCookie = serialize("loginAccessToken", null, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "development",
+            sameSite: "none",
+            maxAge: 0,
+            path: "/",
+        });
+
+        res.setHeader("Set-Cookie", serializedCookie);
+
+        //actualmente se esta enviando el token dentro del cuerpo de la respuesta
+        res.status(200).json({
+            message: "User logged out succesfully!",
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error at logout" });
+    }
+};
+
 export const deleteUser = async (req, res) => {
     try {
         const { id } = req.params;
