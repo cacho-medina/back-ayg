@@ -7,7 +7,7 @@ import {
     updateUserInfo,
     changeUserStatus,
     logout,
-} from "../controllers/user.controllers.js";
+} from "../controllers/admin.controllers.js";
 import { Router } from "express";
 import authRole from "../middleware/authRole.js";
 import authTokenJwt from "../middleware/authTokenJwt.js";
