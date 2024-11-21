@@ -18,8 +18,8 @@ const User = sequelize.define(
                 notNull: true,
             },
         },
-        password: { type: DataTypes.STRING, allowNull: true },
-        name: { type: DataTypes.STRING, allowNull: true },
+        password: { type: DataTypes.STRING, allowNull: false },
+        name: { type: DataTypes.STRING, allowNull: false },
         profileImg: {
             type: DataTypes.STRING,
             allowNull: true,
