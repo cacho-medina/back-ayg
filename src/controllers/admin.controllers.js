@@ -2,19 +2,37 @@ import User from "../models/User.js";
 import bcrypt from "bcrypt";
 import generateJwt from "../helpers/jwt/generateJwt.js";
 import { serialize } from "cookie";
+import Portfolio from "../models/Portfolio.js";
 
-///////////////////OBTENER DATOS DE USUARIOS///////////////////
+///////////////////OBTENER DATOS DE CLIENTES///////////////////
 //si se realiza una consulta sin especificar los parametros
 //se utilizaran los valores predeterminados: page -> 1 - limit -> 10
-export const getUsers = async (req, res) => {
+
+function searchClientByName(name) {
+    whereCondition.name = {
+        [Op.iLike]: `%${name}%`, // Búsqueda parcial, insensible a mayúsculas
+    };
+}
+
+export const getClients = async (req, res) => {
     // Establece los valores predeterminados para página y límite
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
+
+    const { name } = req.query;
+
     try {
+        const whereCondition = { role: "client" };
+        //si se busca un nombre en especifico se agrega la condicion a la sentencia
+        if (name) {
+            searchClientByName(name);
+        }
+
         const { count, rows: users } = await User.findAndCountAll({
-            limit,
-            offset,
+            where: whereCondition,
+            limit, // Máximo número de registros a retornar
+            offset, // Número de registros a omitir desde el inicio
         });
 
         // Calcula el número total de páginas
@@ -33,7 +51,7 @@ export const getUsers = async (req, res) => {
     }
 };
 
-export const getUserById = async (req, res) => {
+export const getClientById = async (req, res) => {
     try {
         const user = await User.findByPk(req.params.id);
         if (!user) {
@@ -82,6 +100,34 @@ export const signUpUser = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Error creating user" });
+    }
+};
+
+export const asocciateClientPlan = async (req, res) => {
+    try {
+        const { userId, plan, currency, capitalInicial } = req.body;
+        //comprueba si ya existe un cliente registrado con ese plan de inversion
+        const userRegistered = await Portfolio.findOne({
+            where: { userId, plan },
+        });
+        if (userRegistered) {
+            return res
+                .status(400)
+                .json({ message: "User is already registered in this plan" });
+        }
+        //asociar cliente con el plan
+        const newUserPortfolio = await Portfolio.create({
+            userId,
+            plan,
+            currency,
+            capitalInicial,
+        });
+        res.status(201).json({ message: "Client asocciated successfully" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            message: "Error at asocciating client with plan",
+        });
     }
 };
 
@@ -185,6 +231,7 @@ export const deleteUser = async (req, res) => {
 };
 
 ///////////////////ACTUALIZACION DE USUARIOS///////////////////
+//actualizar informacion del usuario
 
 export const updateUserInfo = async (req, res) => {
     try {

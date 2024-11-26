@@ -4,8 +4,10 @@ import morgan from "morgan";
 import path from "path";
 import { fileURLToPath } from "url";
 
+////////////////////////////////////////////////////////////////
 import AdminRoutes from "./routes/admin.routes.js";
 import ClientRoutes from "./routes/client.routes.js";
+import UserRoutes from "./routes/user.routes.js";
 
 const app = express();
 
@@ -32,7 +34,9 @@ const __dirname = path.dirname(__filename);
 app.use(express.static(path.join(__dirname, "../public")));
 
 //////////////ROUTES//////////////////////////////////////////////////
-app.use("/api/admin", AdminRoutes);
-app.use("/api/client", ClientRoutes);
+
+app.use(`${process.env.API_VERSION}/user`, UserRoutes);
+app.use(`${process.env.API_VERSION}/admin`, AdminRoutes);
+app.use(`${process.env.API_VERSION}/client`, ClientRoutes);
 
 export default app;
