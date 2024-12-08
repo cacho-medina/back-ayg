@@ -2,30 +2,37 @@ import { Router } from "express";
 import authRole from "../middleware/authRole.js";
 import authTokenJwt from "../middleware/authTokenJwt.js";
 import {
-    getPortfolio,
-    getPortfolioById,
+    getClientPortfolio,
+    getReports,
+    getReportById,
+    updateClientProfile,
+    sendMessage,
 } from "../controllers/client.controllers.js";
 
 const router = Router();
 
-//como cliente debo ver los datos de mi portafolio de inversiones
-//los reportes generados en cada portafolio
-//enviar mails solicitando informacion de cosas, como solicitar cambios en mi portafolio
 //////////////////POST///////////////////////////////////////////////////////
 //ruta para enviar mensajes o mails solicitando informacion
+router.post("/sendMessage", authTokenJwt, authRole(["client"]), sendMessage);
 //////////////////GET///////////////////////////////////////////////////////
 //verifica el token y el rol 'cliente' para servir la informacion
-router.route("/portfolio", authTokenJwt, authRole(["client"]), getPortfolio);
-router.route(
-    "/portfolio/:id",
+router.get(
+    "/portfolio",
     authTokenJwt,
     authRole(["client"]),
-    getPortfolioById
+    getClientPortfolio
 );
-//obtener todos los informes mensuales de todos los portafolios
-//obtener los informes de un portafolio en especifico
-//obtener los datos de un informe en especifico
+//obtener todos los informes mensuales del cliente
+router.get(
+    "/:idPortfolio/reports",
+    authTokenJwt,
+    authRole(["client"]),
+    getReports
+);
+//obtener un informe en especifico
+router.get("/reports/:id", authTokenJwt, authRole(["client"]), getReportById);
 //////////////////PUT///////////////////////////////////////////////////////
 //modificar contrasenia u algun otro dato irrelevante
+router.put("/profile", authTokenJwt, authRole(["client"]), updateClientProfile);
 
 export default router;

@@ -6,12 +6,13 @@ import Portfolio from "./Portfolio.js";
 Portfolio.belongsTo(User, {
     foreignKey: "userId",
     as: "user", // Alias opcional
+    unique: true,
 });
 
-// Relación: Un User tiene muchos Portfolios
-User.hasMany(Portfolio, {
+// Relación: Un User tiene un Portfolio de inversiones
+User.hasOne(Portfolio, {
     foreignKey: "userId",
-    as: "portfolios", // Alias opcional
+    as: "portfolio", // Alias opcional
 });
 
 //Relación: Un Portfolio tiene muchos reportes

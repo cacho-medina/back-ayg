@@ -20,11 +20,6 @@ const User = sequelize.define(
         },
         password: { type: DataTypes.STRING, allowNull: false },
         name: { type: DataTypes.STRING, allowNull: false },
-        profileImg: {
-            type: DataTypes.STRING,
-            allowNull: true,
-            validate: { isUrl: true },
-        },
         role: {
             type: DataTypes.ENUM("admin", "client"),
             defaultValue: "client",

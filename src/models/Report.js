@@ -18,6 +18,7 @@ const Report = sequelize.define(
             },
         },
         renta: {
+            //representa la rentabilidad mensual de la inversion en porcentaje
             type: DataTypes.DOUBLE,
             allowNull: false,
             validate: {
@@ -26,11 +27,13 @@ const Report = sequelize.define(
             },
             comment: "Renta mensual en valores porcentuales (0.25 = 25%)",
         },
-        capital: {
+        /*         capital: {
+            //capital representa el capital total de la inversion hasta el momento
             type: DataTypes.DOUBLE,
             allowNull: false,
-        },
+        }, */
         gananciaGenerada: {
+            //representa la ganancia generada mensual por la inversion
             type: DataTypes.DOUBLE,
             allowNull: false,
         },
@@ -44,10 +47,10 @@ const Report = sequelize.define(
             allowNull: false,
             defaultValue: DataTypes.NOW, // Fecha actual por defecto
         },
-        numeroInforme: {
+        /* numeroInforme: {
             type: DataTypes.INTEGER,
             allowNull: false,
-        },
+        }, */
     },
     {
         timestamps: false,

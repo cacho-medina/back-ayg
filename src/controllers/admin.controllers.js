@@ -1,8 +1,10 @@
 import User from "../models/User.js";
+import Portfolio from "../models/Portfolio.js";
+import Report from "../models/Report.js";
 import bcrypt from "bcrypt";
 import generateJwt from "../helpers/jwt/generateJwt.js";
 import { serialize } from "cookie";
-import Portfolio from "../models/Portfolio.js";
+import "../models/relations.js";
 
 ///////////////////OBTENER DATOS DE CLIENTES///////////////////
 //si se realiza una consulta sin especificar los parametros
@@ -31,6 +33,19 @@ export const getClients = async (req, res) => {
 
         const { count, rows: users } = await User.findAndCountAll({
             where: whereCondition,
+            include: [
+                {
+                    model: Portfolio,
+                    as: "portfolio",
+                    attributes: [
+                        "idPortfolio",
+                        "plan",
+                        "currency",
+                        "capitalInicial",
+                        "fecha",
+                    ],
+                },
+            ],
             limit, // Máximo número de registros a retornar
             offset, // Número de registros a omitir desde el inicio
         });
@@ -53,7 +68,21 @@ export const getClients = async (req, res) => {
 
 export const getClientById = async (req, res) => {
     try {
-        const user = await User.findByPk(req.params.id);
+        const user = await User.findByPk(req.params.id, {
+            include: [
+                {
+                    model: Portfolio,
+                    as: "portfolio",
+                    attributes: [
+                        "idPortfolio",
+                        "plan",
+                        "currency",
+                        "capitalInicial",
+                        "fecha",
+                    ],
+                },
+            ],
+        });
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
@@ -116,13 +145,17 @@ export const asocciateClientPlan = async (req, res) => {
                 .json({ message: "User is already registered in this plan" });
         }
         //asociar cliente con el plan
-        const newUserPortfolio = await Portfolio.create({
+        const newPortfolio = await Portfolio.create({
             userId,
             plan,
             currency,
             capitalInicial,
+            fecha: new Date(),
         });
-        res.status(201).json({ message: "Client asocciated successfully" });
+        res.status(201).json({
+            message: "Client fully associated and activated",
+            newPortfolio,
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({
@@ -221,9 +254,19 @@ export const deleteUser = async (req, res) => {
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
-
+        const portfolio = await Portfolio.findOne({ where: { userId: id } });
+        if (!portfolio) {
+            return res.status(404).json({ message: "Portfolio not found" });
+        }
+        //eliminar portfolio del cliente
+        await Portfolio.destroy({ where: { userId: id } });
+        //eliminar reportes del cliente
+        await Report.destroy({ where: { idPortfolio: portfolio.idPortfolio } });
+        //eliminar usuario
         await user.destroy();
-        res.status(200).json({ message: "User deleted successfully" });
+        res.status(200).json({
+            message: "User and portfolio deleted successfully",
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Error deleting user" });
@@ -291,5 +334,122 @@ export const changeUserStatus = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Error updating user status" });
+    }
+};
+
+///////////////////OBTENER TODOS LOS PORTFOLIOS///////////////////
+export const getPortfolio = async (req, res) => {
+    // Establece los valores predeterminados para página y límite
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+    try {
+        const { count, rows: portfolios } = await Portfolio.findAndCountAll({
+            limit,
+            offset,
+        });
+        // Calcula el número total de páginas
+        const totalPages = Math.ceil(count / limit);
+        res.status(200).json({
+            portfolios,
+            currentPage: page,
+            totalPages,
+            totalPortfolios: count,
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(404).json({ message: "Portfolios not found" });
+    }
+};
+
+/////////////////CRUD DE REPORTES///////////////////
+
+export const getReports = async (req, res) => {
+    try {
+        const reports = await Report.findAll();
+        res.status(200).json(reports);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error getting reports" });
+    }
+};
+
+export const getReportByClientId = async (req, res) => {
+    try {
+        const reports = await Report.findAll({
+            where: { idPortfolio: req.params.id },
+        });
+        res.status(200).json(reports);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error getting reports" });
+    }
+};
+
+export const getReportById = async (req, res) => {
+    try {
+        const report = await Report.findByPk(req.params.id, {
+            include: [
+                {
+                    model: Portfolio,
+                    as: "portfolio",
+                    attributes: [
+                        "idPortfolio",
+                        "plan",
+                        "currency",
+                        "capitalInicial",
+                        "fecha",
+                    ],
+                    include: [
+                        {
+                            model: User,
+                            as: "user",
+                            attributes: ["id", "name"], // Solo incluimos estos campos del usuario
+                        },
+                    ],
+                },
+            ],
+        });
+        res.status(200).json(report);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error getting report" });
+    }
+};
+
+export const createReport = async (req, res) => {
+    const { id, idPortfolio, gananciaGenerada, extraccion, renta } = req.body;
+    try {
+        const client = await User.findByPk(id);
+        if (!client) {
+            return res.status(404).json({ message: "Client not found" });
+        }
+        const portfolio = await Portfolio.findByPk(idPortfolio);
+        if (!portfolio) {
+            return res.status(404).json({ message: "Portfolio not found" });
+        }
+
+        const report = await Report.create({
+            idPortfolio,
+            gananciaGenerada,
+            extraccion: extraccion || 0,
+            renta,
+            fecha: new Date(),
+            numeroInforme: 1,
+        });
+        res.status(201).json({ message: "Report created successfully" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error creating report" });
+    }
+};
+
+export const deleteReport = async (req, res) => {
+    try {
+        await Report.destroy({ where: { id: req.params.id } });
+        res.status(200).json({ message: "Report deleted successfully" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error deleting report" });
     }
 };

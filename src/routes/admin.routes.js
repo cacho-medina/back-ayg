@@ -6,6 +6,11 @@ import {
     getClients,
     getClientById,
     asocciateClientPlan,
+    getReports,
+    getReportByClientId,
+    getReportById,
+    createReport,
+    deleteReport,
 } from "../controllers/admin.controllers.js";
 import { Router } from "express";
 import authRole from "../middleware/authRole.js";
@@ -14,10 +19,8 @@ import validateUser from "../helpers/validations/user.validations.js";
 
 const router = Router();
 
-//Client Management
+///////////////////CRUD CLIENTES///////////////////////////////////////////
 //////////////////POST///////////////////////////////////////////////////////
-//autentica el token de seguridad y luego verifica si el rol es 'admin'
-//valida los datos ingresados
 //registra un 'cliente'
 router.post(
     "/register",
@@ -39,24 +42,27 @@ router.post(
 router.get("/clients", authTokenJwt, authRole(["admin"]), getClients);
 router.get("/client/:id", authTokenJwt, authRole(["admin"]), getClientById);
 //////////////////PUT///////////////////////////////////////////////////////
-router.put(
-    "/update",
-    authTokenJwt,
-    authRole(["admin"]),
-    validateUser,
-    updateUserInfo
-);
+router.put("/update/:id", authTokenJwt, authRole(["admin"]), updateUserInfo);
 //modifica el estado de activo a inactivo y viceversa
 router.put(
-    "/update/status",
+    "/update/status/:id",
     authTokenJwt,
     authRole(["admin"]),
     changeUserStatus
 );
-//////////////////DELETE///////////////////////////////////////////////////////
-router.delete("/delete", authTokenJwt, authRole(["admin"]), deleteUser);
+router.delete("/delete/:id", authTokenJwt, authRole(["admin"]), deleteUser);
 
 /////////////////////////////////////////////////////////////////////////
-//Falta realizar el informe mensual del estado de cuenta del cliente
+/////////////////CRUD DE REPORTES////////////////////////////////////////
+router.get("/reports", authTokenJwt, authRole(["admin"]), getReports);
+router.get("/reports/:id", authTokenJwt, authRole(["admin"]), getReportById);
+router.get(
+    "/reports/client/:id",
+    authTokenJwt,
+    authRole(["admin"]),
+    getReportByClientId
+);
+router.post("/new-report", authTokenJwt, authRole(["admin"]), createReport);
+router.delete("/reports/:id", authTokenJwt, authRole(["admin"]), deleteReport);
 
 export default router;
