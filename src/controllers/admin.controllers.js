@@ -196,7 +196,7 @@ export const login = async (req, res) => {
         //serializa el token
         const serializedCookie = serialize("loginAccessToken", token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "development",
+            secure: process.env.NODE_ENV === "production",
             sameSite: "none",
             maxAge: 60 * 60 * 24 * 30,
             path: "/",
@@ -213,7 +213,7 @@ export const login = async (req, res) => {
                 name: user.name,
                 role: user.role,
             },
-            token, //borrar del cuerpo de response al entrar en production
+            /* token, //borrar del cuerpo de response al entrar en production */
         });
     } catch (error) {
         console.error(error);
