@@ -194,7 +194,7 @@ export const login = async (req, res) => {
         const token = generateJwt(user.id, user.email, user.role);
         //enviar token en cabecera de la response mediante una cookie con el modulo cookie
         //serializa el token
-        const serializedCookie = serialize("loginAccessToken", token, {
+        /* const serializedCookie = serialize("loginAccessToken", token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "none",
@@ -202,7 +202,7 @@ export const login = async (req, res) => {
             path: "/",
         });
 
-        res.setHeader("Set-Cookie", serializedCookie);
+        res.setHeader("Set-Cookie", serializedCookie); */
 
         //actualmente se esta enviando el token dentro del cuerpo de la respuesta
         res.status(200).json({
@@ -213,7 +213,7 @@ export const login = async (req, res) => {
                 name: user.name,
                 role: user.role,
             },
-            /* token, //borrar del cuerpo de response al entrar en production */
+            token, //borrar del cuerpo de response al entrar en production
         });
     } catch (error) {
         console.error(error);
