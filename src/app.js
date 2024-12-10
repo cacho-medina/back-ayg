@@ -16,8 +16,17 @@ app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Lista de orígenes permitidos (ajusta según tus dominios)
+const allowedOrigins = ["https://ayg-app.vercel.app", "http://localhost:3000"];
+
 const corsOptions = {
-    origin: "*",
+    origin: (origin, callback) => {
+        if (allowedOrigins.includes(origin) || !origin) {
+            callback(null, true);
+        } else {
+            callback(new Error("Not allowed by CORS"));
+        }
+    },
     credentials: true,
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
     allowedHeaders: "Content-Type,Authorization",
