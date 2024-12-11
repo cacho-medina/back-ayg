@@ -19,7 +19,7 @@ app.use(express.urlencoded({ extended: true }));
 // Lista de orígenes permitidos (ajusta según tus dominios)
 /* const allowedOrigins = ["https://ayg-app.vercel.app", "http://localhost:3000"]; */
 
-const corsOptions = {
+/* const corsOptions = {
     origin: "http://localhost:3000",
     credentials: true,
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
@@ -30,7 +30,9 @@ app.use(cors(corsOptions));
 app.use((req, res, next) => {
     res.header("Access-Control-Allow-Credentials", true);
     next();
-});
+}); */
+
+app.use(cors());
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
