@@ -16,12 +16,13 @@ app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-const corsOptions = {
-    origin: "http://localhost:3000", // Permitir tu frontend
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Métodos permitidos
-    credentials: true, // Si usas cookies o credenciales
-};
-app.use(cors(corsOptions));
+app.use(
+    cors({
+        origin: "http://localhost:3000", // Permitir tu frontend
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Métodos permitidos
+        credentials: true, // Si usas cookies o credenciales
+    })
+);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
