@@ -193,16 +193,14 @@ export const login = async (req, res) => {
         // Generar token JWT
         const token = generateJwt(user.id, user.email, user.role);
         //enviar token en cabecera de la response mediante una cookie con el modulo cookie
-        //serializa el token
-        const serializedCookie = serialize("loginAccessToken", token, {
+        // Configuración de la cookie directamente con res.cookie
+        res.cookie("loginAccessToken", token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "none",
-            maxAge: 60 * 60 * 24 * 30,
+            maxAge: 60 * 60 * 24 * 30 * 1000, // En milisegundos
             path: "/",
         });
-
-        res.setHeader("Set-Cookie", serializedCookie);
 
         //actualmente se esta enviando el token dentro del cuerpo de la respuesta
         res.status(200).json({
