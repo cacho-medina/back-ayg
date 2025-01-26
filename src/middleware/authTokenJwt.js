@@ -10,7 +10,7 @@ const authTokenJwt = (req, res, next) => {
     const parsedCookies = parse(cookies);
     const token = parsedCookies.loginAccessToken;
 
-    /*  const authHeader = req.headers.authorization;
+    /* const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.split(" ")[1]; // Obtener el token del header */
 
     if (!token) {
