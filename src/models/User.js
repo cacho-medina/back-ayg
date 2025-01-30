@@ -18,8 +18,9 @@ const User = sequelize.define(
                 notNull: true,
             },
         },
-        password: { type: DataTypes.STRING, allowNull: false },
         name: { type: DataTypes.STRING, allowNull: false },
+        password: { type: DataTypes.STRING, allowNull: false },
+        cumpleaños: { type: DataTypes.DATE, allowNull: true },
         role: {
             type: DataTypes.ENUM("admin", "client"),
             defaultValue: "client",
@@ -27,6 +28,28 @@ const User = sequelize.define(
         },
         isActive: {
             type: DataTypes.BOOLEAN,
+            defaultValue: true,
+            allowNull: false,
+        },
+        isDeleted: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false,
+            allowNull: false,
+        },
+        plan: {
+            type: DataTypes.ENUM("A", "B", "C"),
+            allowNull: false,
+        },
+        capitalInicial: {
+            type: DataTypes.DOUBLE,
+            allowNull: false,
+        },
+        capitalActual: {
+            type: DataTypes.DOUBLE,
+            allowNull: false,
+        },
+        fechaRegistro: {
+            type: DataTypes.DATE,
             allowNull: false,
         },
     },

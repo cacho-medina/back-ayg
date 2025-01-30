@@ -8,6 +8,12 @@ const sequelize = new Sequelize(`${POSTGRES_URI}`, {
     dialectModule: pg,
     native: false,
     logging: false,
+    /* pool: {
+        max: 10,
+        min: 2,
+        acquire: 30000,
+        idle: 10000,
+    }, */
 });
 
 export default sequelize;

@@ -1,29 +1,31 @@
 import User from "./User.js";
 import Report from "./Report.js";
-import Portfolio from "./Portfolio.js";
+import Transaction from "./Transaction.js";
 
-// Relación: Un Portfolio pertenece a un User
-Portfolio.belongsTo(User, {
-    foreignKey: "userId",
-    as: "user", // Alias opcional
-    unique: true,
-});
-
-// Relación: Un User tiene un Portfolio de inversiones
-User.hasOne(Portfolio, {
-    foreignKey: "userId",
-    as: "portfolio", // Alias opcional
-});
-
-//Relación: Un Portfolio tiene muchos reportes
-Portfolio.hasMany(Report, {
-    foreignKey: "idPortfolio",
+// Relación: Un User tiene muchos Reports
+User.hasMany(Report, {
+    foreignKey: "idUser",
     as: "reports",
+    onDelete: "CASCADE", // Si se elimina un usuario, se eliminan sus reportes
 });
 
-Report.belongsTo(Portfolio, {
-    foreignKey: "idPortfolio",
-    as: "portfolio", // Alias para la relación inversa
+// Relación: Un Report pertenece a un User
+Report.belongsTo(User, {
+    foreignKey: "idUser",
+    as: "user",
 });
 
-export { User, Portfolio, Report };
+// Relación: Un User tiene muchas Transactions
+User.hasMany(Transaction, {
+    foreignKey: "idUser",
+    as: "transactions",
+    onDelete: "CASCADE", // Si se elimina un usuario, se eliminan sus transacciones
+});
+
+// Relación: Una Transaction pertenece a un User
+Transaction.belongsTo(User, {
+    foreignKey: "idUser",
+    as: "user",
+});
+
+export { User, Report, Transaction };

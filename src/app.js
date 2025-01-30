@@ -5,9 +5,12 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 ////////////////////////////////////////////////////////////////
-import AdminRoutes from "./routes/admin.routes.js";
-import ClientRoutes from "./routes/client.routes.js";
+
+import AuthRoutes from "./routes/auth.routes.js";
+import ReportsRoutes from "./routes/reports.routes.js";
+import TransactionsRoutes from "./routes/transaction.routes.js";
 import UserRoutes from "./routes/user.routes.js";
+import SysadminRoutes from "./routes/sysadmin.routes.js";
 
 const app = express();
 
@@ -18,11 +21,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(
     cors({
-        origin: [
-            "http://localhost:3000",
-            "https://ayg-app.vercel.app",
-            "https://app.albornozyguerineau.com",
-        ], // Permitir tu frontend
+        origin: ["http://localhost:3000", "https://app.albornozyguerineau.com"], // Permitir tu frontend
         methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Métodos permitidos
         credentials: true, // Si usas cookies o credenciales
     })
@@ -34,8 +33,9 @@ app.use(express.static(path.join(__dirname, "../public")));
 
 //////////////ROUTES//////////////////////////////////////////////////
 
+app.use(`${process.env.API_VERSION}/auth`, AuthRoutes);
 app.use(`${process.env.API_VERSION}/user`, UserRoutes);
-app.use(`${process.env.API_VERSION}/admin`, AdminRoutes);
-app.use(`${process.env.API_VERSION}/client`, ClientRoutes);
-
+app.use(`${process.env.API_VERSION}/user/reports`, ReportsRoutes);
+app.use(`${process.env.API_VERSION}/user/transactions`, TransactionsRoutes);
+app.use(`${process.env.API_VERSION}/admin`, SysadminRoutes);
 export default app;

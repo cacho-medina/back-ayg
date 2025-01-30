@@ -8,8 +8,8 @@ const validateUser = [
         .matches(/.+\@.+\..+/)
         .withMessage("invalid email"),
     check("password").notEmpty().withMessage("password required"),
-    check("role").notEmpty().withMessage("role required"),
-    check("name").notEmpty().withMessage("username required"),
+    check("name").notEmpty().withMessage("Name required"),
+    check("capitalInicial").notEmpty().withMessage("Capital inicial required"),
     (req, res, next) => resultValidation(req, res, next),
 ];
 

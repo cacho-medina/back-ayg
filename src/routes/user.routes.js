@@ -1,24 +1,29 @@
 import { Router } from "express";
-
-import { login, logout, signUpUser } from "../controllers/admin.controllers.js";
-import { getUsers } from "../controllers/user.controllers.js";
+import {
+    getUsers,
+    getUserById,
+    updateUser,
+    deleteUser,
+    changeUserStatus,
+    activateUser,
+} from "../controllers/user.controllers.js";
+import { getClients } from "../controllers/admin.controllers.js";
 import authTokenJwt from "../middleware/authTokenJwt.js";
-import validateUser from "../helpers/validations/user.validations.js";
+import authRole from "../middleware/authRole.js";
 
 const router = Router();
 
-//////////////////LOGIN///////////////////////////////////////////////////////
-//como usuario me puedo loguear y desloguear del sistema
-
-router.post("/login", login);
-router.post("/logout", authTokenJwt, logout);
-
-//RUTAS EXCLUSIVA DE SUPERUSER
-//crear usuarios administradores
-router.post("/create-admin", validateUser, signUpUser);
-//obtener el listado de todos los usuarios
-router.get("/user-list", getUsers);
-
-////modificar mis datos como usuario ya sea admin o client
+router.get("/all", authTokenJwt, getUsers);
+router.get("/clients", authTokenJwt, authRole(["admin"]), getClients);
+router.get("/:id", authTokenJwt, getUserById);
+router.put("/update/:id", authTokenJwt, updateUser);
+router.put("/delete/:id", authTokenJwt, authRole(["admin"]), deleteUser);
+router.put("/activate/:id", authTokenJwt, authRole(["admin"]), activateUser);
+router.put(
+    "/update/status/:id",
+    authTokenJwt,
+    authRole(["admin"]),
+    changeUserStatus
+);
 
 export default router;

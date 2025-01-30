@@ -9,48 +9,47 @@ const Report = sequelize.define(
             defaultValue: DataTypes.UUIDV4,
             primaryKey: true,
         },
-        idPortfolio: {
-            type: DataTypes.UUID, // Clave foránea que referencia Portfolio
+        idUser: {
+            type: DataTypes.UUID, // Clave foránea que referencia User
             allowNull: false,
             references: {
-                model: "Portfolios", // Nombre de la tabla de Portfolio
-                key: "idPortfolio", // Columna referenciada en Portfolio
+                model: "Users", // Nombre de la tabla de User
+                key: "id", // Columna referenciada en User
             },
         },
         renta: {
             //representa la rentabilidad mensual de la inversion en porcentaje
-            type: DataTypes.DOUBLE,
+            type: DataTypes.FLOAT,
             allowNull: false,
-            validate: {
-                min: 0,
-                max: 1, // Asegura que esté en el rango de 0 a 1
-            },
-            comment: "Renta mensual en valores porcentuales (0.25 = 25%)",
+            defaultValue: 0,
         },
-        /*         capital: {
-            //capital representa el capital total de la inversion hasta el momento
-            type: DataTypes.DOUBLE,
-            allowNull: false,
-        }, */
         gananciaGenerada: {
             //representa la ganancia generada mensual por la inversion
             type: DataTypes.DOUBLE,
             allowNull: false,
-        },
-        extraccion: {
-            type: DataTypes.DOUBLE,
-            allowNull: false,
             defaultValue: 0,
         },
-        fecha: {
+        /* extraccion: {
+            type: DataTypes.UUID,
+            allowNull: true,
+            references: {
+                model: "Transaction",
+                key: "id",
+            },
+        },
+        deposito: {
+            type: DataTypes.UUID,
+            allowNull: true,
+            references: {
+                model: "Transaction",
+                key: "id",
+            },
+        }, */
+        fechaEmision: {
             type: DataTypes.DATE,
             allowNull: false,
             defaultValue: DataTypes.NOW, // Fecha actual por defecto
         },
-        /* numeroInforme: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
-        }, */
     },
     {
         timestamps: false,

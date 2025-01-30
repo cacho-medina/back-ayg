@@ -1,7 +1,7 @@
 import app from "./src/app.js";
 import sequelize from "./src/config/db.js";
 
-const PORT = process.env.PORT || 4004;
+const PORT = process.env.PORT || 4000;
 
 sequelize
     .sync({ force: false })
