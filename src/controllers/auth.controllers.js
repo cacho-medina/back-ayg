@@ -146,10 +146,10 @@ export const logout = async (req, res) => {
 };
 export const resetPassword = async (req, res) => {
     try {
-        const { password, repeatPassword } = req.body;
+        const { password, passwordConfirm } = req.body;
 
         // Validar que las contraseñas coincidan
-        if (password !== repeatPassword) {
+        if (password !== passwordConfirm) {
             return res.status(400).json({
                 message: "Las contraseñas no coinciden",
             });

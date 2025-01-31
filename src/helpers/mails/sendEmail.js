@@ -21,7 +21,7 @@ export const sendResetPasswordEmail = async (email, resetToken) => {
         subject: "Recuperación de Contraseña - A&G App",
         html: `
             <div style="background-color: #f6f6f6; padding: 20px;">
-                <h1>Recuperación de Contraseña</h1>
+                <h1>Albornoz & Guerineau - Servicios Bursátiles</h1>
                 <p>Has solicitado restablecer tu contraseña.</p>
                 <div style="margin: 20px 0;">
                     <a href="${resetUrl}" 
@@ -66,7 +66,7 @@ export const sendWelcomeEmail = async (email, name) => {
         subject: "Bienvenido a A&G App",
         html: `
             <div>
-                <h1>Bienvenido a A&G App</h1>
+                <h1>Albornoz & Guerineau - Servicios Bursátiles</h1>
                 <p>Hola ${name},</p>
                 <p>Te damos la bienvenida a A&G App. Esperamos que encuentres lo que buscas.</p>
             </div>
@@ -76,17 +76,52 @@ export const sendWelcomeEmail = async (email, name) => {
     await transporter.sendMail(mailOptions);
 };
 
-export const sendReportEmail = async (email, name, reportUrl) => {
+export const sendReportEmail = async (email, name) => {
     const mailOptions = {
         from: `A&G <${process.env.EMAIL_USER}>`,
         to: email,
-        subject: "Información de A&G App",
+        subject: "Reporte Mensual - A&G App",
         html: `
             <div>
-                <h1>Información de A&G App</h1>
+                <h1>Albornoz & Guerineau - Servicios Bursátiles</h1>
                 <p>Hola ${name},</p>
-                <p>Ya tienes disponible tu nuevo reporte mensual. Haz clic en el siguiente enlace para verlo:</p>
-                <a href="${reportUrl}">Ver Reporte</a>
+                <p>Ya tienes disponible tu nuevo reporte mensual.</p>
+            </div>
+        `,
+    };
+
+    await transporter.sendMail(mailOptions);
+};
+
+export const sendTransactionEmail = async (email, name, type, amount, date) => {
+    const mailOptions = {
+        from: `A&G <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: "Transacción - A&G App",
+        html: `
+            <div>
+                <h1>Albornoz & Guerineau - Servicios Bursátiles</h1>
+                <p>Hola ${name},</p>
+                <p>Tu ${type} ha sido confirmado con éxito.</p>
+                <p>Monto: ${amount}</p>
+                <p>Fecha: ${date}</p>
+            </div>
+        `,
+    };
+
+    await transporter.sendMail(mailOptions);
+};
+
+export const sendCustomEmail = async (email, name, subject, message) => {
+    const mailOptions = {
+        from: `A&G <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: subject,
+        html: `
+            <div>
+                <h1>Albornoz & Guerineau - Servicios Bursátiles</h1>
+                <p>Hola ${name},</p>
+                <p>${message}</p>
             </div>
         `,
     };

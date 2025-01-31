@@ -27,7 +27,7 @@ router.post(
 
 router.post("/forgot-password", forgotPassword); //enviar un correo para resetear la contraseña
 router.put(
-    "/reset-password/:id",
+    "/reset-password",
     authTokenJwt,
     validatePasswordReset,
     resetPassword

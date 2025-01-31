@@ -3,6 +3,10 @@ import sequelize from "../config/db.js";
 import User from "../models/User.js";
 import Report from "../models/Report.js";
 import Transaction from "../models/Transaction.js";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
+import { sendCustomEmail } from "../helpers/mails/sendEmail.js";
 
 export const getEstadisticas = async (req, res) => {
     // Iniciar transacción
@@ -77,10 +81,19 @@ export const getEstadisticas = async (req, res) => {
 
         // 5. Historial de ganancias anual
         const firstDayYear = new Date(currentDate.getFullYear(), 0, 1);
+        const lastDayCurrentMonth = new Date(
+            currentDate.getFullYear(),
+            currentDate.getMonth() + 1,
+            0
+        );
+
         const monthlyGains = await Report.findAll({
             where: {
                 fechaEmision: {
-                    [Op.gte]: firstDayYear,
+                    [Op.and]: [
+                        { [Op.gte]: firstDayYear },
+                        { [Op.lte]: lastDayCurrentMonth },
+                    ],
                 },
             },
             attributes: [
@@ -146,7 +159,7 @@ export const getEstadisticas = async (req, res) => {
                     },
                 },
                 historialGanancias: monthlyGains.map((gain) => ({
-                    mes: gain.dataValues.month,
+                    mes: gain.dataValues.month.toISOString().split("T")[0],
                     ganancias: gain.dataValues.totalGanancias,
                 })),
             },
@@ -164,7 +177,42 @@ export const getEstadisticas = async (req, res) => {
 };
 
 export const sendEmail = async (req, res) => {
-    res.status(200).json({ message: "Email enviado" });
+    try {
+        const { email, subject, message, name } = req.body;
+
+        if (!email || !subject || !message) {
+            return res.status(400).json({
+                message: "Faltan campos requeridos (email, subject, message)",
+            });
+        }
+
+        const finded = await User.findOne({ where: { email } });
+        if (!finded) {
+            return res.status(404).json({
+                message: "No existe un usuario con este email",
+            });
+        }
+
+        try {
+            await sendCustomEmail(email, name, subject, message);
+
+            res.status(200).json({
+                message: "Email enviado exitosamente",
+                to: email,
+            });
+        } catch (error) {
+            console.error("Error al enviar email:", error);
+            return res.status(500).json({
+                message: "Error al enviar el correo",
+            });
+        }
+    } catch (error) {
+        console.error("Error en sendEmail:", error);
+        res.status(500).json({
+            message: "Error al enviar el email",
+            error: error.message,
+        });
+    }
 };
 
 export const sendWp = async (req, res) => {
@@ -172,9 +220,86 @@ export const sendWp = async (req, res) => {
 };
 
 export const uploadFile = async (req, res) => {
-    res.status(200).json({ message: "Archivo subido" });
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                message: "No se ha subido ningún archivo",
+            });
+        }
+
+        // Información del archivo subido
+        const fileInfo = {
+            filename: req.file.filename,
+            originalname: req.file.originalname,
+            path: req.file.path,
+            size: req.file.size,
+            mimetype: req.file.mimetype,
+        };
+
+        res.status(200).json({
+            message: "Archivo subido exitosamente",
+            file: fileInfo,
+        });
+    } catch (error) {
+        console.error("Error en uploadFile:", error);
+        res.status(500).json({
+            message: "Error al subir el archivo",
+            error: error.message,
+        });
+    }
 };
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 export const downloadFile = async (req, res) => {
-    res.status(200).json({ message: "Archivo descargado" });
+    try {
+        const { filename } = req.params;
+        const uploadDir = path.join(__dirname, "../../public/uploads");
+        const filePath = path.join(uploadDir, filename);
+
+        // Verificar que el archivo existe
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({
+                message: "Archivo no encontrado",
+            });
+        }
+
+        // Verificar que el archivo está dentro del directorio uploads
+        const realPath = fs.realpathSync(filePath);
+        if (!realPath.startsWith(fs.realpathSync(uploadDir))) {
+            return res.status(403).json({
+                message: "Acceso denegado",
+            });
+        }
+
+        // Obtener el tipo MIME del archivo
+        const ext = path.extname(filename).toLowerCase();
+        const mimeTypes = {
+            ".pdf": "application/pdf",
+            ".png": "image/png",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+        };
+
+        // Configurar headers
+        res.setHeader(
+            "Content-Type",
+            mimeTypes[ext] || "application/octet-stream"
+        );
+        res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="${filename}"`
+        );
+
+        // Enviar archivo
+        const fileStream = fs.createReadStream(filePath);
+        fileStream.pipe(res);
+    } catch (error) {
+        console.error("Error en downloadFile:", error);
+        res.status(500).json({
+            message: "Error al descargar el archivo",
+            error: error.message,
+        });
+    }
 };

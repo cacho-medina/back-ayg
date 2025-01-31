@@ -9,7 +9,7 @@ const validatePasswordReset = [
         .withMessage("La contraseña debe contener al menos un número")
         .matches(/[A-Z]/)
         .withMessage("La contraseña debe contener al menos una mayúscula"),
-    check("repeatPassword").custom((value, { req }) => {
+    check("passwordConfirm").custom((value, { req }) => {
         if (value !== req.body.password) {
             throw new Error("Las contraseñas no coinciden");
         }

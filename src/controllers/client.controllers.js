@@ -1,5 +1,6 @@
 import Transaction from "../models/Transaction.js";
 import User from "../models/User.js";
+import { sendTransactionEmail } from "../helpers/mails/sendEmail.js";
 
 export const getTransactions = async (req, res) => {
     try {
@@ -84,6 +85,14 @@ export const extraccion = async (req, res) => {
             fechaTransaccion: new Date(fechaTransaccion),
         });
 
+        await sendTransactionEmail(
+            user.email,
+            user.name,
+            "retiro",
+            monto,
+            fechaTransaccion
+        );
+
         res.status(200).json(transaction);
     } catch (error) {
         console.error(error);
@@ -107,6 +116,14 @@ export const deposito = async (req, res) => {
             tipo: "deposito",
             fechaTransaccion: new Date(fechaTransaccion),
         });
+
+        await sendTransactionEmail(
+            user.email,
+            user.name,
+            "deposito",
+            monto,
+            fechaTransaccion
+        );
 
         res.status(200).json(transaction);
     } catch (error) {

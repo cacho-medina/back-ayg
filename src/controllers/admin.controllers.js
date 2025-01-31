@@ -1,6 +1,7 @@
 import User from "../models/User.js";
 import Report from "../models/Report.js";
 import "../models/relations.js";
+import { sendReportEmail } from "../helpers/mails/sendEmail.js";
 
 export const getClients = async (req, res) => {
     try {
@@ -93,6 +94,8 @@ export const createReport = async (req, res) => {
         //actualizar datos del usuario
         user.capitalActual += gananciaGenerada;
         await user.save();
+
+        await sendReportEmail(user.email, user.name);
 
         res.status(201).json({
             message: "Report created successfully",

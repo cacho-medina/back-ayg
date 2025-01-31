@@ -8,12 +8,20 @@ import {
     sendWp,
     uploadFile,
 } from "../controllers/sysadmin.controllers.js";
+import upload from "../middleware/upload.js";
 
 const router = Router();
 
 router.get("/estadisticas", authTokenJwt, authRole(["admin"]), getEstadisticas);
-router.post("/upload-file", authTokenJwt, authRole(["admin"]), uploadFile);
-router.post("/download-file", authTokenJwt, downloadFile);
+router.post(
+    "/upload-file",
+    authTokenJwt,
+    authRole(["admin"]),
+    upload.single("file"),
+    uploadFile
+);
+
+router.get("/download-file/:filename", authTokenJwt, downloadFile);
 //envio de correos personalizados
 router.post("/send-email", authTokenJwt, authRole(["admin"]), sendEmail);
 //futura implementacion
