@@ -29,22 +29,6 @@ const Report = sequelize.define(
             allowNull: false,
             defaultValue: 0,
         },
-        /* extraccion: {
-            type: DataTypes.UUID,
-            allowNull: true,
-            references: {
-                model: "Transaction",
-                key: "id",
-            },
-        },
-        deposito: {
-            type: DataTypes.UUID,
-            allowNull: true,
-            references: {
-                model: "Transaction",
-                key: "id",
-            },
-        }, */
         fechaEmision: {
             type: DataTypes.DATE,
             allowNull: false,

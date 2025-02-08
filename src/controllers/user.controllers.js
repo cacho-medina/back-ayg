@@ -23,11 +23,19 @@ export const getUserById = async (req, res) => {
 
 export const updateUser = async (req, res) => {
     try {
+        const { name, email, cumpleaños, phone } = req.body;
         const user = await User.findByPk(req.params.id);
         if (!user) {
             return res.status(404).json({ message: "Usuario no encontrado" });
         }
-        await user.update(req.body);
+        if (user.isDeleted) {
+            return res.status(400).json({ message: "Usuario ya eliminado" });
+        }
+        user.name = name || user.name;
+        user.email = email || user.email;
+        user.cumpleaños = new Date(cumpleaños).toISOString() || user.cumpleaños;
+        user.phone = phone || user.phone;
+        await user.save();
         res.status(200).json({ message: "Usuario actualizado correctamente" });
     } catch (error) {
         console.error(error);

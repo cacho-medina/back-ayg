@@ -1,6 +1,9 @@
 import Transaction from "../models/Transaction.js";
 import User from "../models/User.js";
-import { sendTransactionEmail } from "../helpers/mails/sendEmail.js";
+import {
+    sendTransactionConfirmationEmail,
+    sendTransactionRequestEmail,
+} from "../helpers/mails/sendEmail.js";
 
 export const getTransactions = async (req, res) => {
     try {
@@ -82,15 +85,18 @@ export const extraccion = async (req, res) => {
             idUser,
             monto,
             tipo: "retiro",
-            fechaTransaccion: new Date(fechaTransaccion),
+            fechaTransaccion: new Date(fechaTransaccion).toISOString(),
+            status: "pendiente",
         });
 
-        await sendTransactionEmail(
+        await sendTransactionRequestEmail(
             user.email,
             user.name,
             "retiro",
             monto,
-            fechaTransaccion
+            fechaTransaccion,
+            user.phone,
+            transaction.id
         );
 
         res.status(200).json(transaction);
@@ -107,28 +113,93 @@ export const deposito = async (req, res) => {
             return res.status(404).json({ message: "User not found" });
         }
 
-        user.capitalActual += monto;
-        await user.save();
-
         const transaction = await Transaction.create({
             idUser,
             monto,
             tipo: "deposito",
-            fechaTransaccion: new Date(fechaTransaccion),
+            fechaTransaccion: new Date(fechaTransaccion).toISOString(),
+            status: "pendiente",
         });
 
-        await sendTransactionEmail(
+        await sendTransactionRequestEmail(
             user.email,
             user.name,
             "deposito",
             monto,
-            fechaTransaccion
+            fechaTransaccion,
+            user.phone,
+            transaction.id
         );
 
         res.status(200).json(transaction);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Error creating transaction" });
+    }
+};
+
+export const confirmDeposito = async (req, res) => {
+    try {
+        const transaction = await Transaction.findByPk(req.params.id);
+        if (!transaction) {
+            return res.status(404).json({ message: "Transaction not found" });
+        }
+        if (transaction.status !== "pendiente") {
+            return res
+                .status(400)
+                .json({ message: "Transaction is not pending" });
+        }
+        transaction.status = "completado";
+        await transaction.save();
+
+        const user = await User.findByPk(transaction.idUser);
+        user.capitalActual += transaction.monto;
+        await user.save();
+
+        await sendTransactionConfirmationEmail(
+            user.email,
+            user.name,
+            transaction.tipo,
+            transaction.monto,
+            transaction.fechaTransaccion
+        );
+
+        res.status(200).json(transaction);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error confirming transaction" });
+    }
+};
+export const confirmExtraccion = async (req, res) => {
+    try {
+        const transaction = await Transaction.findByPk(req.params.id);
+        if (!transaction) {
+            return res.status(404).json({ message: "Transaction not found" });
+        }
+        if (transaction.status !== "pendiente") {
+            return res
+                .status(400)
+                .json({ message: "Transaction is not pending" });
+        }
+        transaction.status = "completado";
+        await transaction.save();
+
+        const user = await User.findByPk(transaction.idUser);
+        user.capitalActual -= transaction.monto;
+        await user.save();
+
+        await sendTransactionConfirmationEmail(
+            user.email,
+            user.name,
+            transaction.tipo,
+            transaction.monto,
+            transaction.fechaTransaccion
+        );
+
+        res.status(200).json(transaction);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error confirming transaction" });
     }
 };
 

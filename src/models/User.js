@@ -20,6 +20,8 @@ const User = sequelize.define(
         },
         name: { type: DataTypes.STRING, allowNull: false },
         password: { type: DataTypes.STRING, allowNull: false },
+        phone: { type: DataTypes.STRING, allowNull: false },
+        key: { type: DataTypes.STRING, allowNull: true }, //para futura implementacion de tarjeta nfc
         cumpleaños: { type: DataTypes.DATE, allowNull: true },
         role: {
             type: DataTypes.ENUM("admin", "client"),

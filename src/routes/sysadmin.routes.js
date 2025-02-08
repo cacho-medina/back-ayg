@@ -4,6 +4,8 @@ import authTokenJwt from "../middleware/authTokenJwt.js";
 import {
     downloadFile,
     getEstadisticas,
+    getEstadisticasByUser,
+    getFiles,
     sendEmail,
     sendWp,
     uploadFile,
@@ -13,6 +15,8 @@ import upload from "../middleware/upload.js";
 const router = Router();
 
 router.get("/estadisticas", authTokenJwt, authRole(["admin"]), getEstadisticas);
+router.get("/:idUser/estadisticas", authTokenJwt, getEstadisticasByUser);
+
 router.post(
     "/upload-file",
     authTokenJwt,
@@ -20,6 +24,8 @@ router.post(
     upload.single("file"),
     uploadFile
 );
+
+router.get("/files", authTokenJwt, getFiles);
 
 router.get("/download-file/:filename", authTokenJwt, downloadFile);
 //envio de correos personalizados

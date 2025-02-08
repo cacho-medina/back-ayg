@@ -12,27 +12,77 @@ transporter.verify().then(() => {
     console.log("Ready for send emails");
 });
 
+const emailTemplate = (content) => {
+    `
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden;">
+                <!-- Header -->
+                <div style="background-color: #000000; padding: 20px; text-align: center; font-family: Helvetica;">
+                    <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 300;">Albornoz & Guerineau</h1>
+                    <p style="color: #ffffff; margin: 5px 0 0; font-size: 16px; font-weight: 300;">Servicios Bursátiles</p>
+                </div>
+                
+                <!-- Content -->
+                <div style="padding: 30px 20px; font-family: Helvetica">
+                    <p>Hola ${name},</p>
+            <p>¡Nos alegra darte la bienvenida a A&G App! Ahora tienes acceso a una plataforma diseñada para facilitar la gestión y el seguimiento de tu portafolio de inversiones.</p>
+            <ul>
+                <li>Explora tu dashboard personalizado.</li>
+                <li>Consulta reportes y rendimiento de tu portafolio.</li>
+                <li>Solicita transacciones y recibe confirmaciones instantáneas.</li>
+            </ul>
+            <p>Para comenzar a utilizar A&G App, por favor haz clic en el siguiente enlace:</p>
+            <a href="${process.env.FRONTEND_URL}/login">Iniciar Ahora</a>
+            <p>Si tienes alguna pregunta o necesitas ayuda, no dudes en contactarnos.</p>
+            <p>¡Que tengas una excelente experiencia con A&G App!</p>
+                    <p>Atentamente,</p>
+                    <p>A&G App Team</p>
+                </div>
+                
+                <!-- Footer -->
+                <div style="background-color: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666666; font-family: Helvetica;">
+                    <p style="margin: 0;">© Powered by <a href="https://www.instagram.com/koistudiook" target="_blank">Koi Studio</a> </p>
+                </div>
+            </div>
+        </div>
+    `;
+};
+
 export const sendResetPasswordEmail = async (email, resetToken) => {
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+    const content = `
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden;">
+                <!-- Header -->
+                <div style="background-color: #000000; padding: 20px; text-align: center; font-family: Helvetica;">
+                    <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 300;">Albornoz & Guerineau</h1>
+                    <p style="color: #ffffff; margin: 5px 0 0; font-size: 16px; font-weight: 300;">Servicios Bursátiles</p>
+                </div>
+                
+                <!-- Content -->
+                <div style="padding: 30px 20px; font-family: Helvetica">
+                    <p>Hola,</p>
+            <p>Recibimos una solicitud para restablecer tu contraseña en A&G App. Si realizaste esta solicitud, haz clic en el enlace a continuación para crear una nueva contraseña:</p>
+            <a href="${resetUrl}">Reestablecer contraseña</a>
+            <p>Este enlace expirará en 1 hora. Si no solicitaste este cambio, puedes ignorar este correo.</p>
+            <p>Si tienes alguna pregunta o necesitas ayuda, no dudes en contactarnos.</p>
+                    <p>Atentamente,</p>
+                    <p>A&G App Team</p>
+                </div>
+                
+                <!-- Footer -->
+                <div style="background-color: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666666; font-family: Helvetica;">
+                    <p style="margin: 0;">© Powered by <a href="https://www.instagram.com/koistudiook" target="_blank">Koi Studio</a> </p>
+                </div>
+            </div>
+        </div>
+    `;
 
     const mailOptions = {
         from: `A&G <${process.env.EMAIL_USER}>`,
         to: email,
-        subject: "Recuperación de Contraseña - A&G App",
-        html: `
-            <div style="background-color: #f6f6f6; padding: 20px;">
-                <h1>Albornoz & Guerineau - Servicios Bursátiles</h1>
-                <p>Has solicitado restablecer tu contraseña.</p>
-                <div style="margin: 20px 0;">
-                    <a href="${resetUrl}" 
-                       style="background-color: #4CAF50; color: white; padding: 15px 25px; text-decoration: none; border-radius: 4px;">
-                        Restablecer Contraseña
-                    </a>
-                </div>
-                <p><strong>Este enlace expirará en 1 hora.</strong></p>
-                <p>Si no solicitaste este cambio, ignora este correo.</p>
-            </div>
-        `,
+        subject: "🔑 Restablece tu contraseña",
+        html: content,
     };
 
     await transporter.sendMail(mailOptions);
@@ -60,17 +110,44 @@ export const sendActivateAccountEmail = async (email, name) => {
 };
 
 export const sendWelcomeEmail = async (email, name) => {
+    const content = `
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden;">
+                <!-- Header -->
+                <div style="background-color: #000000; padding: 20px; text-align: center; font-family: Helvetica;">
+                    <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 300;">Albornoz & Guerineau</h1>
+                    <p style="color: #ffffff; margin: 5px 0 0; font-size: 16px; font-weight: 300;">Servicios Bursátiles</p>
+                </div>
+                
+                <!-- Content -->
+                <div style="padding: 30px 20px; font-family: Helvetica">
+                    <p>Hola ${name},</p>
+            <p>¡Nos alegra darte la bienvenida a A&G App! Ahora tienes acceso a una plataforma diseñada para facilitar la gestión y el seguimiento de tu portafolio de inversiones.</p>
+            <ul>
+                <li>Explora tu dashboard personalizado.</li>
+                <li>Consulta reportes y rendimiento de tu portafolio.</li>
+                <li>Solicita transacciones y recibe confirmaciones instantáneas.</li>
+            </ul>
+            <p>Para comenzar a utilizar A&G App, por favor haz clic en el siguiente enlace:</p>
+            <a href="${process.env.FRONTEND_URL}/login">Iniciar Ahora</a>
+            <p>Si tienes alguna pregunta o necesitas ayuda, no dudes en contactarnos.</p>
+            <p>¡Que tengas una excelente experiencia con A&G App!</p>
+                    <p>Atentamente,</p>
+                    <p>A&G App Team</p>
+                </div>
+                
+                <!-- Footer -->
+                <div style="background-color: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666666; font-family: Helvetica;">
+                    <p style="margin: 0;">© Powered by <a href="https://www.instagram.com/koistudiook" target="_blank">Koi Studio</a> </p>
+                </div>
+            </div>
+        </div>
+        `;
     const mailOptions = {
         from: `A&G <${process.env.EMAIL_USER}>`,
         to: email,
-        subject: "Bienvenido a A&G App",
-        html: `
-            <div>
-                <h1>Albornoz & Guerineau - Servicios Bursátiles</h1>
-                <p>Hola ${name},</p>
-                <p>Te damos la bienvenida a A&G App. Esperamos que encuentres lo que buscas.</p>
-            </div>
-        `,
+        subject: "🎉 ¡Bienvenido a A&G App! Empieza a gestionar tu cuenta hoy",
+        html: content,
     };
 
     await transporter.sendMail(mailOptions);
@@ -80,33 +157,96 @@ export const sendReportEmail = async (email, name) => {
     const mailOptions = {
         from: `A&G <${process.env.EMAIL_USER}>`,
         to: email,
-        subject: "Reporte Mensual - A&G App",
+        subject: "📊 Tu reporte mensual está listo para revisar",
         html: `
-            <div>
-                <h1>Albornoz & Guerineau - Servicios Bursátiles</h1>
-                <p>Hola ${name},</p>
-                <p>Ya tienes disponible tu nuevo reporte mensual.</p>
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden;">
+                <!-- Header -->
+                <div style="background-color: #000000; padding: 20px; text-align: center; font-family: Helvetica;">
+                    <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 300;">Albornoz & Guerineau</h1>
+                    <p style="color: #ffffff; margin: 5px 0 0; font-size: 16px; font-weight: 300;">Servicios Bursátiles</p>
+                </div>
+                
+                <!-- Content -->
+                <div style="padding: 30px 20px; font-family: Helvetica">
+            <p>Hola ${name},</p>
+            <p>Ya tienes disponible tu nuevo reporte mensual.
+            <p>Para acceder a él, por favor haz clic en el siguiente enlace:</p>
+            <a href="${process.env.FRONTEND_URL}">Ver Reporte</a>
+            <p>Si tienes alguna pregunta o necesitas ayuda, no dudes en contactarnos.</p>
+            <p>¡Que tengas una excelente experiencia con A&G App!</p>
+                    <p>Atentamente,</p>
+                    <p>A&G App Team</p>
+                </div>
+                
+                <!-- Footer -->
+                <div style="background-color: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666666; font-family: Helvetica;">
+                    <p style="margin: 0;">© Powered by <a href="https://www.instagram.com/koistudiook" target="_blank">Koi Studio</a> </p>
+                </div>
             </div>
+        </div>
         `,
     };
 
     await transporter.sendMail(mailOptions);
 };
 
-export const sendTransactionEmail = async (email, name, type, amount, date) => {
+export const sendTransactionRequestEmail = async (
+    email,
+    name,
+    type,
+    amount,
+    date,
+    phone,
+    idTransaction
+) => {
+    const content = `
+            <p>Hola Administrador,</p>
+            <p>El usuario ${name} ha solicitado una nueva transacción.</p>
+            <h2>📌Detalles de la solicitud:</h2>
+            <ul>
+                <li>Tipo de transacción: ${type}</li>
+                <li>Monto: ${amount}</li>
+                <li>Fecha: ${date}</li>
+                <li>Teléfono: ${phone}</li>
+            </ul>
+            <p>Para aprobar la transacción, por favor ingrese a la siguiente ruta: ${process.env.FRONTEND_URL}/admin/transactions/${idTransaction}</p>
+            <p>Si tienes alguna pregunta o necesitas ayuda, no dudes en contactarnos.</p>
+            `;
+    const mailOptions = {
+        from: `A&G <${process.env.EMAIL_USER}>`,
+        to: process.env.EMAIL_USER,
+        subject: "⚠️ Nueva solicitud de transacción pendiente de aprobación",
+        html: emailTemplate(content),
+    };
+
+    await transporter.sendMail(mailOptions);
+};
+
+export const sendTransactionConfirmationEmail = async (
+    email,
+    name,
+    type,
+    amount,
+    date
+) => {
+    const content = `
+        <p>Hola ${name},</p>
+        <p>Queremos informarte que tu ${type} ha sido procesada correctamente.</p>
+        <h2>📌Detalles de la transacción:</h2>
+        <ul>
+            <li>Tipo de transacción: ${type}</li>
+            <li>Monto: ${amount}</li>
+            <li>Fecha: ${date}</li>
+        </ul>
+        <p>Puedes verificar los detalles en tu cuenta aquí: ${process.env.FRONTEND_URL}/panel/transactions</p>
+        <p>Si tienes alguna pregunta o necesitas ayuda, no dudes en contactarnos.</p>
+        `;
     const mailOptions = {
         from: `A&G <${process.env.EMAIL_USER}>`,
         to: email,
-        subject: "Transacción - A&G App",
-        html: `
-            <div>
-                <h1>Albornoz & Guerineau - Servicios Bursátiles</h1>
-                <p>Hola ${name},</p>
-                <p>Tu ${type} ha sido confirmado con éxito.</p>
-                <p>Monto: ${amount}</p>
-                <p>Fecha: ${date}</p>
-            </div>
-        `,
+        subject: "✅ Tu transacción ha sido procesada con éxito",
+        html: emailTemplate(content),
     };
 
     await transporter.sendMail(mailOptions);
@@ -117,13 +257,10 @@ export const sendCustomEmail = async (email, name, subject, message) => {
         from: `A&G <${process.env.EMAIL_USER}>`,
         to: email,
         subject: subject,
-        html: `
-            <div>
-                <h1>Albornoz & Guerineau - Servicios Bursátiles</h1>
-                <p>Hola ${name},</p>
-                <p>${message}</p>
-            </div>
-        `,
+        html: emailTemplate(`
+            <p>Hola ${name},</p>
+            <p>${message}</p>
+        `),
     };
 
     await transporter.sendMail(mailOptions);

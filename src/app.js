@@ -3,6 +3,7 @@ import cors from "cors";
 import morgan from "morgan";
 import path from "path";
 import { fileURLToPath } from "url";
+import cookieParser from "cookie-parser";
 
 ////////////////////////////////////////////////////////////////
 
@@ -11,6 +12,7 @@ import ReportsRoutes from "./routes/reports.routes.js";
 import TransactionsRoutes from "./routes/transaction.routes.js";
 import UserRoutes from "./routes/user.routes.js";
 import SysadminRoutes from "./routes/sysadmin.routes.js";
+import MovementRoutes from "./routes/movement.routes.js";
 
 const app = express();
 
@@ -18,7 +20,7 @@ const app = express();
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
+app.use(cookieParser());
 app.use(
     cors({
         origin: ["http://localhost:3000", "https://app.albornozyguerineau.com"], // Permitir tu frontend
@@ -37,5 +39,6 @@ app.use(`${process.env.API_VERSION}/auth`, AuthRoutes);
 app.use(`${process.env.API_VERSION}/user`, UserRoutes);
 app.use(`${process.env.API_VERSION}/user/reports`, ReportsRoutes);
 app.use(`${process.env.API_VERSION}/user/transactions`, TransactionsRoutes);
+app.use(`${process.env.API_VERSION}/user/movements`, MovementRoutes);
 app.use(`${process.env.API_VERSION}/admin`, SysadminRoutes);
 export default app;

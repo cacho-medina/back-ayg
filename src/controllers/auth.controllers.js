@@ -2,7 +2,10 @@ import User from "../models/User.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import generateJwt from "../helpers/jwt/generateJwt.js";
-import { sendResetPasswordEmail } from "../helpers/mails/sendEmail.js";
+import {
+    sendResetPasswordEmail,
+    sendWelcomeEmail,
+} from "../helpers/mails/sendEmail.js";
 
 export const login = async (req, res) => {
     try {
@@ -27,6 +30,15 @@ export const login = async (req, res) => {
         }
         const token = generateJwt(user.id, user.email, user.role);
 
+        // Configurar la cookie
+        res.cookie("loginAccessToken", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production", // true en producción
+            sameSite: "strict",
+            maxAge: 30 * 24 * 60 * 60 * 1000, // 30 días en milisegundos
+            path: "/",
+        });
+
         res.status(200).json({
             message: "Login successful",
             token,
@@ -48,6 +60,7 @@ export const signUpUser = async (req, res) => {
             capitalInicial,
             plan,
             fechaRegistro,
+            phone,
         } = req.body;
 
         // Verificar si el usuario ya existe
@@ -72,8 +85,11 @@ export const signUpUser = async (req, res) => {
             isDeleted: false,
             capitalActual: capitalInicial,
             plan,
-            fechaRegistro: fechaRegistro || new Date(),
+            fechaRegistro: fechaRegistro || new Date().toISOString(),
+            phone,
         });
+
+        await sendWelcomeEmail(email, name);
 
         res.status(201).json({
             message: "User registered successfully",
@@ -82,6 +98,7 @@ export const signUpUser = async (req, res) => {
                 email: user.email,
                 name: user.name,
                 role: user.role,
+                phone: user.phone,
             },
         });
     } catch (error) {
@@ -92,8 +109,15 @@ export const signUpUser = async (req, res) => {
 
 export const signUpAdmin = async (req, res) => {
     try {
-        const { email, name, password, cumpleaños, capitalInicial, plan } =
-            req.body;
+        const {
+            email,
+            name,
+            password,
+            cumpleaños,
+            capitalInicial,
+            plan,
+            phone,
+        } = req.body;
 
         // Verificar si el usuario ya existe
         const existingUser = await User.findOne({ where: { email } });
@@ -117,8 +141,11 @@ export const signUpAdmin = async (req, res) => {
             isDeleted: false,
             capitalActual: capitalInicial || 0,
             plan: plan || "A",
-            fechaRegistro: new Date(),
+            fechaRegistro: new Date().toISOString(),
+            phone,
         });
+
+        await sendWelcomeEmail(email, name);
 
         res.status(201).json({
             message: "User registered successfully",
@@ -127,6 +154,7 @@ export const signUpAdmin = async (req, res) => {
                 email: user.email,
                 name: user.name,
                 role: user.role,
+                phone: user.phone,
             },
         });
     } catch (error) {

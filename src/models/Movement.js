@@ -1,36 +1,36 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../config/db.js";
 
-const Transaction = sequelize.define(
-    "Transaction",
+const Movement = sequelize.define(
+    "Movement",
     {
         id: {
             type: DataTypes.UUID,
             defaultValue: DataTypes.UUIDV4,
             primaryKey: true,
         },
-        idUser: {
+        idReport: {
             type: DataTypes.UUID,
             allowNull: false,
             references: {
-                model: "Users",
+                model: "Reports",
                 key: "id",
             },
         },
-        tipo: {
-            type: DataTypes.ENUM("deposito", "retiro"),
-            allowNull: false,
-        },
-        status: {
-            type: DataTypes.ENUM("pendiente", "completado", "cancelado"),
-            allowNull: false,
-        },
-        monto: {
-            type: DataTypes.DOUBLE,
-            allowNull: false,
-        },
-        fechaTransaccion: {
+        fechaOperacion: {
             type: DataTypes.DATE,
+            allowNull: false,
+        },
+        precioEntrada: {
+            type: DataTypes.FLOAT,
+            allowNull: false,
+        },
+        precioSalida: {
+            type: DataTypes.FLOAT,
+            allowNull: false,
+        },
+        puntosGanados: {
+            type: DataTypes.FLOAT,
             allowNull: false,
         },
     },
@@ -39,4 +39,4 @@ const Transaction = sequelize.define(
     }
 );
 
-export default Transaction;
+export default Movement;

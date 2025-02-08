@@ -2,6 +2,7 @@ import User from "../models/User.js";
 import Report from "../models/Report.js";
 import "../models/relations.js";
 import { sendReportEmail } from "../helpers/mails/sendEmail.js";
+import Movement from "../models/Movement.js";
 
 export const getClients = async (req, res) => {
     try {
@@ -45,15 +46,29 @@ export const getReportById = async (req, res) => {
                     as: "user",
                     attributes: ["name", "plan", "capitalActual"],
                 },
+                {
+                    model: Movement,
+                    as: "movements",
+                    attributes: [
+                        "id",
+                        "fechaOperacion",
+                        "precioEntrada",
+                        "precioSalida",
+                        "puntosGanados",
+                    ],
+                    order: [["fechaOperacion", "DESC"]],
+                },
             ],
         });
+
         if (!report) {
-            return res.status(404).json({ message: "Report not found" });
+            return res.status(404).json({ message: "Reporte no encontrado" });
         }
+
         res.status(200).json(report);
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: "Error getting report" });
+        res.status(500).json({ message: "Error al obtener el reporte" });
     }
 };
 
@@ -78,7 +93,7 @@ export const getReportByUserId = async (req, res) => {
 };
 
 export const createReport = async (req, res) => {
-    const { idUser, renta, gananciaGenerada } = req.body;
+    const { idUser, renta, gananciaGenerada, fechaEmision } = req.body;
     try {
         const user = await User.findByPk(idUser);
         if (!user) {
@@ -88,7 +103,7 @@ export const createReport = async (req, res) => {
             idUser,
             renta,
             gananciaGenerada,
-            fechaEmision: new Date(),
+            fechaEmision: new Date(fechaEmision).toISOString(),
         });
 
         //actualizar datos del usuario
