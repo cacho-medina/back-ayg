@@ -31,12 +31,14 @@ export const updateUser = async (req, res) => {
         if (user.isDeleted) {
             return res.status(400).json({ message: "Usuario ya eliminado" });
         }
-        user.name = name || user.name;
-        user.email = email || user.email;
-        user.cumpleaños = new Date(cumpleaños).toISOString() || user.cumpleaños;
-        user.phone = phone || user.phone;
+        await user.update({
+            name: name || user.name,
+            email: email || user.email,
+            cumpleaños: cumpleaños || user.cumpleaños,
+            phone: phone || user.phone,
+        });
         await user.save();
-        res.status(200).json({ message: "Usuario actualizado correctamente" });
+        res.status(200).json(user);
     } catch (error) {
         console.error(error);
         res.status(404).json({ message: "Error al actualizar el usuario" });
@@ -95,9 +97,9 @@ export const changeUserStatus = async (req, res) => {
             return res.status(400).json({ message: "User is deleted" });
         }
         if (user.isActive === isActive) {
-            return res
-                .status(400)
-                .json({ message: "User status is already updated" });
+            return res.status(400).json({
+                message: `User status is already ${isActive}`,
+            });
         }
         // Cambiar estado activo del usuario
         user.isActive = isActive;

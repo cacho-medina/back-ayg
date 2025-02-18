@@ -34,6 +34,11 @@ const Report = sequelize.define(
             allowNull: false,
             defaultValue: DataTypes.NOW, // Fecha actual por defecto
         },
+        extraccion: {
+            type: DataTypes.DOUBLE,
+            allowNull: false,
+            defaultValue: 0,
+        },
     },
     {
         timestamps: false,

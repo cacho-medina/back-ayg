@@ -2,64 +2,75 @@ import { Op } from "sequelize";
 import sequelize from "../config/db.js";
 import User from "../models/User.js";
 import Report from "../models/Report.js";
-import Transaction from "../models/Transaction.js";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import { sendCustomEmail } from "../helpers/mails/sendEmail.js";
-import {
-    getCurrentUTCYear,
-    getCurrentUTCMonth,
-    getUTCStartOfYear,
-    getUTCEndOfMonth,
-} from "../utils/dateUtils.js";
+import { getCurrentUTCYear } from "../utils/dateUtils.js";
 import File from "../models/File.js";
+import MovementReport from "../models/MovementReport.js";
 
 export const getEstadisticas = async (req, res) => {
     const t = await sequelize.transaction();
 
     try {
-        // 1. Clientes activos
-        const activeClients = await User.count({
+        // 1. Obtener fechas relevantes
+        const now = new Date();
+        const currentYear = now.getUTCFullYear();
+        const currentMonth = now.getUTCMonth();
+
+        // Calcular primer día de hace 6 meses
+        const sixMonthsAgo = new Date(now);
+        sixMonthsAgo.setMonth(now.getMonth() - 5);
+        sixMonthsAgo.setDate(1);
+        sixMonthsAgo.setHours(0, 0, 0, 0);
+
+        // 2. Estadísticas básicas
+        const [activeClients, totalReports, movementReports] =
+            await Promise.all([
+                User.count({
+                    where: {
+                        role: "client",
+                        isActive: true,
+                        isDeleted: false,
+                    },
+                    transaction: t,
+                }),
+                Report.count({
+                    where: {
+                        fechaEmision: {
+                            [Op.gte]: new Date(currentYear, currentMonth, 1),
+                            [Op.lt]: new Date(currentYear, currentMonth + 1, 1),
+                        },
+                    },
+                    transaction: t,
+                }),
+                MovementReport.count({
+                    where: {
+                        fecha: {
+                            [Op.gte]: new Date(currentYear, currentMonth, 1),
+                            [Op.lt]: new Date(currentYear, currentMonth + 1, 1),
+                        },
+                    },
+                    transaction: t,
+                }),
+            ]);
+
+        // 4. Balance total del sistema
+        const totalBalance = await User.sum("capitalActual", {
             where: {
-                role: "client",
                 isActive: true,
                 isDeleted: false,
             },
             transaction: t,
         });
 
-        // 2. Reportes y transacciones
-        const [totalReports, totalTransactions] = await Promise.all([
-            Report.count({ transaction: t }),
-            Transaction.count({ transaction: t }),
-        ]);
-
-        // 3. Capital total en el sistema
-        const totalCapital = await User.sum("capitalActual", {
-            where: {
-                isActive: true,
-                isDeleted: false,
-            },
-            transaction: t,
-        });
-
-        // 4. Historial de ganancias mensual del año actual
-        const now = new Date().toISOString();
-        const currentYear = getCurrentUTCYear();
-        const firstDayYear = getUTCStartOfYear(currentYear);
-        const lastDayCurrentMonth = getUTCEndOfMonth(
-            currentYear,
-            getCurrentUTCMonth()
-        );
-
+        // 5. Historial de rentabilidad últimos 6 meses
         const monthlyStats = await Report.findAll({
             where: {
                 fechaEmision: {
-                    [Op.and]: [
-                        { [Op.gte]: firstDayYear },
-                        { [Op.lte]: lastDayCurrentMonth },
-                    ],
+                    [Op.gte]: sixMonthsAgo,
+                    [Op.lt]: new Date(currentYear, currentMonth + 1, 1),
                 },
             },
             attributes: [
@@ -74,10 +85,6 @@ export const getEstadisticas = async (req, res) => {
                 [
                     sequelize.fn("AVG", sequelize.col("renta")),
                     "rentabilidadPromedio",
-                ],
-                [
-                    sequelize.fn("SUM", sequelize.col("gananciaGenerada")),
-                    "gananciaTotal",
                 ],
             ],
             group: [
@@ -100,40 +107,27 @@ export const getEstadisticas = async (req, res) => {
             transaction: t,
         });
 
-        // 5. Calcular rendimiento promedio general
-        const rendimientoTotal = monthlyStats.reduce(
-            (sum, stat) =>
-                sum + parseFloat(stat.dataValues.rentabilidadPromedio || 0),
-            0
-        );
-        const rendimientoPromedio =
-            monthlyStats.length > 0
-                ? rendimientoTotal / monthlyStats.length
-                : 0;
-
         await t.commit();
 
         res.status(200).json({
-            clientesActivos: activeClients,
-            operaciones: {
-                reportes: totalReports,
-                transacciones: totalTransactions,
+            estadisticasActuales: {
+                clientesActivos: activeClients,
+                reportesMes: totalReports,
+                movimientosMes: movementReports,
             },
-            capitalTotal: totalCapital,
-            rendimientoPromedio: rendimientoPromedio.toFixed(2),
-            historialMensual: monthlyStats.map((stat) => ({
+            balanceTotal: totalBalance,
+            rentabilidadMensual: monthlyStats.map((stat) => ({
                 mes: stat.dataValues.mes,
                 rentabilidad: parseFloat(
                     stat.dataValues.rentabilidadPromedio
                 ).toFixed(2),
-                ganancia: parseFloat(stat.dataValues.gananciaTotal).toFixed(2),
             })),
         });
     } catch (error) {
         await t.rollback();
-        console.error("Error en getEstadisticas:", error);
+        console.error("Error en getEstadisticasAdmin:", error);
         res.status(500).json({
-            message: "Error al obtener estadísticas del sistema",
+            message: "Error al obtener estadísticas administrativas",
             error: error.message,
         });
     }

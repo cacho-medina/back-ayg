@@ -16,10 +16,10 @@ const router = Router();
 router.get("/all", authTokenJwt, getUsers);
 router.get("/clients", authTokenJwt, authRole(["admin"]), getClients);
 router.get("/:id", authTokenJwt, getUserById);
-router.put("/update/:id", authTokenJwt, updateUser);
-router.put("/delete/:id", authTokenJwt, authRole(["admin"]), deleteUser);
-router.put("/activate/:id", authTokenJwt, authRole(["admin"]), activateUser);
-router.put(
+router.patch("/update/:id", authTokenJwt, updateUser);
+router.patch("/delete/:id", authTokenJwt, authRole(["admin"]), deleteUser);
+router.patch("/activate/:id", authTokenJwt, authRole(["admin"]), activateUser);
+router.patch(
     "/update/status/:id",
     authTokenJwt,
     authRole(["admin"]),

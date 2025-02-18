@@ -3,18 +3,20 @@ import authTokenJwt from "../middleware/authTokenJwt.js";
 import authRole from "../middleware/authRole.js";
 import {
     getMovements,
-    getMovementsByReportId,
+    getMovementById,
     createMovement,
     deleteMovement,
     updateMovement,
+    uploadMovements,
 } from "../controllers/movement.controllers.js";
 
 const router = Router();
 
 router.get("/all", authTokenJwt, authRole(["admin"]), getMovements);
-router.get("/:idReport", authTokenJwt, getMovementsByReportId);
+router.get("/:id", authTokenJwt, getMovementById);
 router.post("/create", authTokenJwt, authRole(["admin"]), createMovement);
 router.delete("/delete/:id", authTokenJwt, authRole(["admin"]), deleteMovement);
 router.put("/update/:id", authTokenJwt, authRole(["admin"]), updateMovement);
+router.post("/upload", authTokenJwt, authRole(["admin"]), uploadMovements);
 
 export default router;

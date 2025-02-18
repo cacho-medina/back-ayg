@@ -1,9 +1,10 @@
 import User from "./User.js";
 import Report from "./Report.js";
 import Transaction from "./Transaction.js";
-import Movement from "./Movement.js";
 import Notification from "./Notification.js";
 import File from "./File.js";
+import MovementReport from "./MovementReport.js";
+import MovementItem from "./MovementItem.js";
 
 // Relación: Un User tiene muchos Reports
 User.hasMany(Report, {
@@ -31,19 +32,6 @@ Transaction.belongsTo(User, {
     as: "user",
 });
 
-// Relación: Un Report tiene muchos Movements
-Report.hasMany(Movement, {
-    foreignKey: "idReport",
-    as: "movements",
-    onDelete: "CASCADE",
-});
-
-// Relación: Un Movement pertenece a un Report
-Movement.belongsTo(Report, {
-    foreignKey: "idReport",
-    as: "report",
-});
-
 // Relación: Un User tiene muchas Notifications
 User.hasMany(Notification, {
     foreignKey: "idUser",
@@ -68,4 +56,25 @@ File.belongsTo(User, {
     as: "user",
 });
 
-export { User, Report, Transaction, Movement, Notification, File };
+// Añadir estas relaciones
+User.hasMany(MovementReport, {
+    foreignKey: "idUser",
+    as: "movementReports",
+});
+
+MovementReport.belongsTo(User, {
+    foreignKey: "idUser",
+    as: "user",
+});
+
+MovementReport.hasMany(MovementItem, {
+    foreignKey: "idMovementReport",
+    as: "movements",
+});
+
+MovementItem.belongsTo(MovementReport, {
+    foreignKey: "idMovementReport",
+    as: "report",
+});
+
+export { User, Report, Transaction, Notification, File };

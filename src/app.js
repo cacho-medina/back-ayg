@@ -13,6 +13,7 @@ import TransactionsRoutes from "./routes/transaction.routes.js";
 import UserRoutes from "./routes/user.routes.js";
 import SysadminRoutes from "./routes/sysadmin.routes.js";
 import MovementRoutes from "./routes/movement.routes.js";
+import MovementReportRoutes from "./routes/movementReport.routes.js";
 
 const app = express();
 
@@ -24,7 +25,7 @@ app.use(cookieParser());
 app.use(
     cors({
         origin: ["http://localhost:3000", "https://app.albornozyguerineau.com"], // Permitir tu frontend
-        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Métodos permitidos
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"], // Métodos permitidos
         credentials: true, // Si usas cookies o credenciales
     })
 );
@@ -40,5 +41,9 @@ app.use(`${process.env.API_VERSION}/user`, UserRoutes);
 app.use(`${process.env.API_VERSION}/user/reports`, ReportsRoutes);
 app.use(`${process.env.API_VERSION}/user/transactions`, TransactionsRoutes);
 app.use(`${process.env.API_VERSION}/user/movements`, MovementRoutes);
+app.use(
+    `${process.env.API_VERSION}/user/movements/reports`,
+    MovementReportRoutes
+);
 app.use(`${process.env.API_VERSION}/admin`, SysadminRoutes);
 export default app;

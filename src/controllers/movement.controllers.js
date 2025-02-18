@@ -1,17 +1,9 @@
-import Movement from "../models/Movement.js";
-import Report from "../models/Report.js";
+import MovementItem from "../models/MovementItem.js";
 
 export const getMovements = async (req, res) => {
     try {
-        const movements = await Movement.findAll({
-            order: [["fechaOperacion", "DESC"]],
-            include: [
-                {
-                    model: Report,
-                    as: "report",
-                    attributes: ["fechaEmision"],
-                },
-            ],
+        const movements = await MovementItem.findAll({
+            order: [["time_open", "DESC"]],
         });
         res.status(200).json(movements);
     } catch (error) {
@@ -20,38 +12,40 @@ export const getMovements = async (req, res) => {
     }
 };
 
-export const getMovementsByReportId = async (req, res) => {
+export const getMovementById = async (req, res) => {
     try {
-        const movements = await Movement.findAll({
-            where: { idReport: req.params.idReport },
-            order: [["fechaOperacion", "DESC"]],
-        });
-        res.status(200).json(movements);
+        const movement = await MovementItem.findByPk(req.params.id);
+        if (!movement) {
+            return res
+                .status(404)
+                .json({ message: "No se encontró el movimiento solicitado" });
+        }
+        return res.status(200).json(movement);
     } catch (error) {
         console.error(error);
-        res.status(500).json({
-            message: "Error al obtener los movimientos del reporte",
-        });
+        return res
+            .status(500)
+            .json({ message: "Error al obtener el movimiento" });
     }
 };
 
 export const createMovement = async (req, res) => {
     try {
         const {
-            idReport,
-            fechaOperacion,
-            precioEntrada,
-            precioSalida,
-            puntosGanados,
+            number_account,
+            currency,
+            broker,
+            position,
+            symbol,
+            type,
+            volume,
+            open_price,
+            time_open,
+            comission,
+            gross_pl,
         } = req.body;
 
-        const movement = await Movement.create({
-            idReport,
-            fechaOperacion: new Date(fechaOperacion).toISOString(),
-            precioEntrada,
-            precioSalida,
-            puntosGanados,
-        });
+        const movement = await MovementItem.create(req.body);
 
         res.status(201).json({
             message: "Movimiento creado exitosamente",
@@ -65,7 +59,7 @@ export const createMovement = async (req, res) => {
 
 export const deleteMovement = async (req, res) => {
     try {
-        const movement = await Movement.findByPk(req.params.id);
+        const movement = await MovementItem.findByPk(req.params.id);
         if (!movement) {
             return res
                 .status(404)
@@ -82,22 +76,28 @@ export const deleteMovement = async (req, res) => {
 export const updateMovement = async (req, res) => {
     try {
         const { id } = req.params;
-        const { fechaOperacion, precioEntrada, precioSalida, puntosGanados } =
-            req.body;
+        const {
+            number_account,
+            currency,
+            broker,
+            position,
+            symbol,
+            type,
+            volume,
+            open_price,
+            time_open,
+            comission,
+            gross_pl,
+        } = req.body;
 
-        const movement = await Movement.findByPk(id);
+        const movement = await MovementItem.findByPk(id);
         if (!movement) {
             return res
                 .status(404)
                 .json({ message: "Movimiento no encontrado" });
         }
 
-        await movement.update({
-            fechaOperacion: new Date(fechaOperacion).toISOString(),
-            precioEntrada,
-            precioSalida,
-            puntosGanados,
-        });
+        await movement.update(req.body);
 
         res.status(200).json({
             message: "Movimiento actualizado exitosamente",
@@ -106,5 +106,16 @@ export const updateMovement = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Error al actualizar el movimiento" });
+    }
+};
+
+//upload movements from excel file
+export const uploadMovements = async (req, res) => {
+    try {
+        const movements = await MovementItem.findAll();
+        res.status(200).json(movements);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error al obtener los movimientos" });
     }
 };

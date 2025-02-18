@@ -6,6 +6,7 @@ import {
     sendResetPasswordEmail,
     sendWelcomeEmail,
 } from "../helpers/mails/sendEmail.js";
+import sequelize from "../config/db.js";
 
 export const login = async (req, res) => {
     try {
@@ -30,15 +31,6 @@ export const login = async (req, res) => {
         }
         const token = generateJwt(user.id, user.email, user.role);
 
-        // Configurar la cookie
-        res.cookie("loginAccessToken", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production", // true en producción
-            sameSite: "strict",
-            maxAge: 30 * 24 * 60 * 60 * 1000, // 30 días en milisegundos
-            path: "/",
-        });
-
         res.status(200).json({
             message: "Login successful",
             token,
@@ -51,6 +43,8 @@ export const login = async (req, res) => {
 };
 
 export const signUpUser = async (req, res) => {
+    const t = await sequelize.transaction();
+
     try {
         const {
             email,
@@ -64,8 +58,13 @@ export const signUpUser = async (req, res) => {
         } = req.body;
 
         // Verificar si el usuario ya existe
-        const existingUser = await User.findOne({ where: { email } });
+        const existingUser = await User.findOne({
+            where: { email },
+            transaction: t,
+        });
+
         if (existingUser) {
+            await t.rollback();
             return res.status(400).json({ message: "User already exists" });
         }
 
@@ -74,22 +73,29 @@ export const signUpUser = async (req, res) => {
         const hashedPassword = bcrypt.hashSync(password, salt);
 
         // Crear nuevo usuario
-        const user = await User.create({
-            email,
-            name,
-            password: hashedPassword,
-            cumpleaños,
-            role: "client",
-            capitalInicial,
-            isActive: true,
-            isDeleted: false,
-            capitalActual: capitalInicial,
-            plan,
-            fechaRegistro: fechaRegistro || new Date().toISOString(),
-            phone,
-        });
+        const user = await User.create(
+            {
+                email,
+                name,
+                password: hashedPassword,
+                cumpleaños,
+                role: "client",
+                capitalInicial,
+                isActive: true,
+                isDeleted: false,
+                capitalActual: capitalInicial,
+                plan,
+                fechaRegistro: fechaRegistro || new Date().toISOString(),
+                phone,
+            },
+            { transaction: t }
+        );
 
+        // Enviar email de bienvenida
         await sendWelcomeEmail(email, name);
+
+        // Si todo sale bien, confirmar la transacción
+        await t.commit();
 
         res.status(201).json({
             message: "User registered successfully",
@@ -102,6 +108,8 @@ export const signUpUser = async (req, res) => {
             },
         });
     } catch (error) {
+        // Si hay algún error, revertir la transacción
+        await t.rollback();
         console.error(error);
         res.status(500).json({ message: "Error creating user" });
     }
