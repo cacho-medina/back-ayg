@@ -6,6 +6,7 @@ import {
     getMovementReports,
     getMovementReportById,
     deleteMovementReport,
+    updateMovementReport,
 } from "../controllers/movementReport.controllers.js";
 
 const router = Router();
@@ -13,6 +14,12 @@ const router = Router();
 router.post("/create", authTokenJwt, authRole(["admin"]), createMovementReport);
 router.get("/all", authTokenJwt, authRole(["admin"]), getMovementReports);
 router.get("/:id", authTokenJwt, getMovementReportById);
+router.patch(
+    "/update/:id",
+    authTokenJwt,
+    authRole(["admin"]),
+    updateMovementReport
+);
 router.delete(
     "/delete/:id",
     authTokenJwt,

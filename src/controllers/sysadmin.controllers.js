@@ -47,7 +47,7 @@ export const getEstadisticas = async (req, res) => {
                 }),
                 MovementReport.count({
                     where: {
-                        fecha: {
+                        close_frame: {
                             [Op.gte]: new Date(currentYear, currentMonth, 1),
                             [Op.lt]: new Date(currentYear, currentMonth + 1, 1),
                         },
@@ -55,6 +55,52 @@ export const getEstadisticas = async (req, res) => {
                     transaction: t,
                 }),
             ]);
+
+        // 3. Calcular rentabilidad promedio de movimientos
+        const movementStats = await MovementReport.findAll({
+            where: {
+                close_frame: {
+                    [Op.gte]: sixMonthsAgo,
+                    [Op.lt]: new Date(currentYear, currentMonth + 1, 1),
+                },
+            },
+            attributes: [
+                [
+                    sequelize.fn(
+                        "date_trunc",
+                        "month",
+                        sequelize.col("close_frame")
+                    ),
+                    "mes",
+                ],
+                [
+                    sequelize.fn("AVG", sequelize.col("rentabilidad_total")),
+                    "rentabilidadPromedio",
+                ],
+                [
+                    sequelize.fn("AVG", sequelize.col("rentabilidad_personal")),
+                    "rentabilidadPersonalPromedio",
+                ],
+            ],
+            group: [
+                sequelize.fn(
+                    "date_trunc",
+                    "month",
+                    sequelize.col("close_frame")
+                ),
+            ],
+            order: [
+                [
+                    sequelize.fn(
+                        "date_trunc",
+                        "month",
+                        sequelize.col("close_frame")
+                    ),
+                    "ASC",
+                ],
+            ],
+            transaction: t,
+        });
 
         // 4. Balance total del sistema
         const totalBalance = await User.sum("capitalActual", {
@@ -65,7 +111,7 @@ export const getEstadisticas = async (req, res) => {
             transaction: t,
         });
 
-        // 5. Historial de rentabilidad últimos 6 meses
+        // 5. Historial de rentabilidad últimos 6 meses (reportes mensuales)
         const monthlyStats = await Report.findAll({
             where: {
                 fechaEmision: {
@@ -122,6 +168,15 @@ export const getEstadisticas = async (req, res) => {
                     stat.dataValues.rentabilidadPromedio
                 ).toFixed(2),
             })),
+            rentabilidadMovimientos: movementStats.map((stat) => ({
+                mes: stat.dataValues.mes,
+                rentabilidadTotal: parseFloat(
+                    stat.dataValues.rentabilidadPromedio
+                ).toFixed(2),
+                rentabilidadPersonal: parseFloat(
+                    stat.dataValues.rentabilidadPersonalPromedio
+                ).toFixed(2),
+            })),
         });
     } catch (error) {
         await t.rollback();
@@ -145,34 +200,19 @@ export const getEstadisticasByUser = async (req, res) => {
             return res.status(404).json({ message: "Usuario no encontrado" });
         }
 
-        // Fechas en UTC
-        const now = new Date().toISOString();
-        const currentYear = getCurrentUTCYear();
+        // Obtener fecha actual y calcular fecha de inicio (6 meses atrás)
+        const now = new Date();
+        const sixMonthsAgo = new Date(now);
+        sixMonthsAgo.setMonth(now.getMonth() - 5);
+        sixMonthsAgo.setDate(1);
 
-        const lastDayPreviousYear = new Date(
-            Date.UTC(currentYear - 1, 11, 31, 23, 59, 59, 999)
-        );
-        const lastDayCurrentMonth = new Date(
-            Date.UTC(
-                currentYear,
-                new Date(now).getUTCMonth() + 1,
-                0,
-                23,
-                59,
-                59,
-                999
-            )
-        );
-
-        // Obtener todos los reportes del usuario en el año actual
+        // Obtener todos los reportes del usuario en los últimos 6 meses
         const monthlyReports = await Report.findAll({
             where: {
                 idUser,
                 fechaEmision: {
-                    [Op.and]: [
-                        { [Op.gt]: lastDayPreviousYear },
-                        { [Op.lte]: lastDayCurrentMonth },
-                    ],
+                    [Op.gte]: sixMonthsAgo,
+                    [Op.lt]: new Date(now.getFullYear(), now.getMonth() + 1, 1),
                 },
             },
             attributes: [
@@ -184,14 +224,8 @@ export const getEstadisticasByUser = async (req, res) => {
                     ),
                     "mes",
                 ],
-                [
-                    sequelize.fn("AVG", sequelize.col("renta")),
-                    "rentabilidadPromedio",
-                ],
-                [
-                    sequelize.fn("SUM", sequelize.col("gananciaGenerada")),
-                    "gananciaTotal",
-                ],
+                [sequelize.fn("AVG", sequelize.col("renta")), "rentabilidad"],
+                [sequelize.fn("MAX", sequelize.col("balance")), "balance"],
             ],
             group: [
                 sequelize.fn(
@@ -213,39 +247,53 @@ export const getEstadisticasByUser = async (req, res) => {
             transaction: t,
         });
 
-        // Calcular estadísticas de rendimiento
-        const rendimientoTotal = monthlyReports.reduce(
-            (sum, report) =>
-                sum + parseFloat(report.dataValues.rentabilidadPromedio || 0),
-            0
-        );
-        const rendimientoPromedio =
-            monthlyReports.length > 0
-                ? rendimientoTotal / monthlyReports.length
-                : 0;
+        // Mapear los meses a formato español abreviado
+        const mesesAbreviados = [
+            "Ene",
+            "Feb",
+            "Mar",
+            "Abr",
+            "May",
+            "Jun",
+            "Jul",
+            "Ago",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dic",
+        ];
 
-        // Calcular balance (positivo o negativo)
-        const balance = user.capitalActual - user.capitalInicial;
-        const isPositive = balance >= 0;
+        const data = monthlyReports.map((report) => ({
+            month: mesesAbreviados[new Date(report.dataValues.mes).getMonth()],
+            balance: parseFloat(report.dataValues.balance).toFixed(2),
+            rentabilidad: parseFloat(report.dataValues.rentabilidad).toFixed(2),
+        }));
+
+        // Calcular estadísticas generales
+        const rendimientoPromedio =
+            data.reduce((acc, curr) => acc + parseFloat(curr.rentabilidad), 0) /
+            data.length;
+
+        const balanceInicial = parseFloat(
+            data[0]?.balance || user.capitalInicial
+        );
+        const balanceActual = parseFloat(
+            data[data.length - 1]?.balance || user.capitalActual
+        );
+        const rendimientoTotal =
+            ((balanceActual - balanceInicial) / balanceInicial) * 100;
 
         await t.commit();
 
         res.status(200).json({
             plan: user.plan,
-            balance: {
-                valor: Math.abs(balance).toFixed(2),
-                isPositive,
+            estadisticasGenerales: {
+                rendimientoPromedio: rendimientoPromedio.toFixed(2),
+                rendimientoTotal: rendimientoTotal.toFixed(2),
+                balanceInicial: balanceInicial.toFixed(2),
+                balanceActual: balanceActual.toFixed(2),
             },
-            rendimientoPromedio: rendimientoPromedio.toFixed(2),
-            historialMensual: monthlyReports.map((report) => ({
-                mes: report.dataValues.mes,
-                rentabilidad: parseFloat(
-                    report.dataValues.rentabilidadPromedio
-                ).toFixed(2),
-                ganancia: parseFloat(report.dataValues.gananciaTotal).toFixed(
-                    2
-                ),
-            })),
+            data,
         });
     } catch (error) {
         await t.rollback();

@@ -92,6 +92,8 @@ export const createReport = async (req, res) => {
             return res.status(404).json({ message: "Usuario no encontrado" });
         }
 
+        user.capitalActual += gananciaGenerada;
+
         const report = await Report.create(
             {
                 idUser,
@@ -99,6 +101,7 @@ export const createReport = async (req, res) => {
                 gananciaGenerada,
                 fechaEmision: new Date(fechaEmision),
                 extraccion,
+                balance: user.capitalActual,
             },
             { transaction: t }
         );
@@ -108,7 +111,6 @@ export const createReport = async (req, res) => {
             await user.save({ transaction: t });
         }
 
-        user.capitalActual += gananciaGenerada;
         await user.save({ transaction: t });
 
         await t.commit();

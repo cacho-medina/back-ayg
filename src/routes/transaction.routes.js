@@ -2,14 +2,13 @@ import { Router } from "express";
 import authTokenJwt from "../middleware/authTokenJwt.js";
 import authRole from "../middleware/authRole.js";
 import {
-    confirmDeposito,
-    confirmExtraccion,
     deleteTransaction,
     deposito,
     extraccion,
     getTransactionById,
     getTransactionByUserId,
     getTransactions,
+    getTransactionStats,
 } from "../controllers/client.controllers.js";
 
 const router = Router();
@@ -19,7 +18,7 @@ router.get("/:idUser", authTokenJwt, getTransactionByUserId);
 router.get("/id/:id", authTokenJwt, authRole(["admin"]), getTransactionById);
 router.post("/retiro", authTokenJwt, extraccion);
 router.post("/deposito", authTokenJwt, deposito);
-router.post(
+/* router.post(
     "/confirmar-deposito/:id",
     authTokenJwt,
     authRole(["admin"]),
@@ -30,7 +29,7 @@ router.post(
     authTokenJwt,
     authRole(["admin"]),
     confirmExtraccion
-);
+); */
 
 router.delete(
     "/delete/:id",
@@ -38,5 +37,7 @@ router.delete(
     authRole(["admin"]),
     deleteTransaction
 );
+
+router.get("/stats/:idUser", authTokenJwt, getTransactionStats);
 
 export default router;

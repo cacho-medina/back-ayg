@@ -116,6 +116,8 @@ export const signUpUser = async (req, res) => {
 };
 
 export const signUpAdmin = async (req, res) => {
+    const t = await sequelize.transaction();
+
     try {
         const {
             email,
@@ -128,8 +130,13 @@ export const signUpAdmin = async (req, res) => {
         } = req.body;
 
         // Verificar si el usuario ya existe
-        const existingUser = await User.findOne({ where: { email } });
+        const existingUser = await User.findOne({
+            where: { email },
+            transaction: t,
+        });
+
         if (existingUser) {
+            await t.rollback();
             return res.status(400).json({ message: "User already exists" });
         }
 
@@ -138,22 +145,34 @@ export const signUpAdmin = async (req, res) => {
         const hashedPassword = bcrypt.hashSync(password, salt);
 
         // Crear nuevo usuario
-        const user = await User.create({
-            email,
-            name,
-            password: hashedPassword,
-            cumpleaños,
-            role: "admin",
-            capitalInicial: capitalInicial || 0,
-            isActive: true,
-            isDeleted: false,
-            capitalActual: capitalInicial || 0,
-            plan: plan || "A",
-            fechaRegistro: new Date().toISOString(),
-            phone,
-        });
+        const user = await User.create(
+            {
+                email,
+                name,
+                password: hashedPassword,
+                cumpleaños,
+                role: "admin",
+                capitalInicial: capitalInicial || 0,
+                isActive: true,
+                isDeleted: false,
+                capitalActual: capitalInicial || 0,
+                plan: plan || "A",
+                fechaRegistro: new Date().toISOString(),
+                phone,
+            },
+            { transaction: t }
+        );
 
-        await sendWelcomeEmail(email, name);
+        try {
+            // Enviar email de bienvenida
+            await sendWelcomeEmail(email, name);
+        } catch (emailError) {
+            // Log del error pero continuamos con la transacción
+            console.error("Error enviando email de bienvenida:", emailError);
+        }
+
+        // Confirmar la transacción
+        await t.commit();
 
         res.status(201).json({
             message: "User registered successfully",
@@ -166,7 +185,9 @@ export const signUpAdmin = async (req, res) => {
             },
         });
     } catch (error) {
-        console.error(error);
+        // Revertir la transacción en caso de error
+        await t.rollback();
+        console.error("Error en signUpAdmin:", error);
         res.status(500).json({ message: "Error creating user" });
     }
 };

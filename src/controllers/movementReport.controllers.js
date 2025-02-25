@@ -7,7 +7,21 @@ export const createMovementReport = async (req, res) => {
     const t = await sequelize.transaction();
 
     try {
-        const { idUser, movements } = req.body;
+        const {
+            idUser,
+            number_account,
+            currency,
+            broker,
+            rentabilidad_total,
+            rentabilidad_personal,
+            gastos_operativos,
+            beneficio_empresa,
+            desgravamen,
+            open_frame,
+            close_frame,
+            comision_total,
+            movements, // Array de IDs de movimientos
+        } = req.body;
 
         // Verificar usuario
         const user = await User.findByPk(idUser, { transaction: t });
@@ -16,40 +30,50 @@ export const createMovementReport = async (req, res) => {
             return res.status(404).json({ message: "Usuario no encontrado" });
         }
 
-        // Calcular totales
-        const totalOperaciones = movements.length;
-        const gananciaTotal = movements.reduce(
-            (sum, mov) => sum + mov.gross_pl,
-            0
-        );
-        const comisionTotal = movements.reduce(
-            (sum, mov) => sum + mov.commission,
-            0
-        );
+        // Verificar que existan todos los movimientos
+        const existingMovements = await MovementItem.findAll({
+            where: {
+                id: movements,
+            },
+            transaction: t,
+        });
+
+        if (existingMovements.length !== movements.length) {
+            await t.rollback();
+            return res.status(404).json({
+                message: "Algunos movimientos no fueron encontrados",
+            });
+        }
 
         // Crear reporte
         const report = await MovementReport.create(
             {
                 idUser,
-                totalOperaciones,
-                gananciaTotal,
-                comisionTotal,
+                number_account,
+                currency,
+                broker,
+                rentabilidad_total,
+                rentabilidad_personal,
+                gastos_operativos,
+                beneficio_empresa,
+                desgravamen,
+                open_frame,
+                close_frame,
+                comision_total,
             },
             { transaction: t }
         );
 
-        // Crear movimientos asociados
-        const movementPromises = movements.map((movement) =>
-            MovementItem.create(
-                {
-                    ...movement,
-                    idMovementReport: report.id,
+        // Actualizar los movimientos con el ID del reporte
+        await MovementItem.update(
+            { idMovementReport: report.id },
+            {
+                where: {
+                    id: movements,
                 },
-                { transaction: t }
-            )
+                transaction: t,
+            }
         );
-
-        await Promise.all(movementPromises);
 
         await t.commit();
 
@@ -79,9 +103,10 @@ export const getMovementReports = async (req, res) => {
                 {
                     model: MovementItem,
                     as: "movements",
+                    order: [["time_open", "DESC"]],
                 },
             ],
-            order: [["fecha", "DESC"]],
+            order: [["createdAt", "DESC"]],
         });
 
         res.status(200).json(reports);
@@ -106,6 +131,7 @@ export const getMovementReportById = async (req, res) => {
                 {
                     model: MovementItem,
                     as: "movements",
+                    order: [["time_open", "DESC"]],
                 },
             ],
         });
@@ -137,11 +163,14 @@ export const deleteMovementReport = async (req, res) => {
             return res.status(404).json({ message: "Reporte no encontrado" });
         }
 
-        // Eliminar movimientos asociados
-        await MovementItem.destroy({
-            where: { idMovementReport: report.id },
-            transaction: t,
-        });
+        // Actualizar los movimientos para eliminar la asociación
+        await MovementItem.update(
+            { idMovementReport: null },
+            {
+                where: { idMovementReport: report.id },
+                transaction: t,
+            }
+        );
 
         // Eliminar el reporte
         await report.destroy({ transaction: t });
@@ -154,6 +183,111 @@ export const deleteMovementReport = async (req, res) => {
         console.error(error);
         res.status(500).json({
             message: "Error al eliminar el reporte",
+            error: error.message,
+        });
+    }
+};
+
+export const updateMovementReport = async (req, res) => {
+    const t = await sequelize.transaction();
+
+    try {
+        const {
+            idUser,
+            movements,
+            number_account,
+            currency,
+            broker,
+            rentabilidad_total,
+            rentabilidad_personal,
+            gastos_operativos,
+            beneficio_empresa,
+            desgravamen,
+            open_frame,
+            close_frame,
+            comision_total,
+        } = req.body;
+
+        // Verificar usuario
+        const user = await User.findByPk(idUser, { transaction: t });
+        if (!user) {
+            await t.rollback();
+            return res.status(404).json({ message: "Usuario no encontrado" });
+        }
+
+        // Buscar y actualizar reporte
+        const report = await MovementReport.findByPk(req.params.id, {
+            transaction: t,
+        });
+
+        if (!report) {
+            await t.rollback();
+            return res.status(404).json({ message: "Reporte no encontrado" });
+        }
+
+        // Actualizar datos del reporte
+        await report.update(
+            {
+                idUser,
+                number_account,
+                currency,
+                broker,
+                rentabilidad_total,
+                rentabilidad_personal,
+                gastos_operativos,
+                beneficio_empresa,
+                desgravamen,
+                open_frame,
+                close_frame,
+                comision_total,
+            },
+            { transaction: t }
+        );
+
+        if (movements) {
+            // Eliminar asociaciones anteriores
+            await MovementItem.update(
+                { idMovementReport: null },
+                {
+                    where: { idMovementReport: report.id },
+                    transaction: t,
+                }
+            );
+
+            // Verificar que existan todos los movimientos
+            const existingMovements = await MovementItem.findAll({
+                where: { id: movements },
+                transaction: t,
+            });
+
+            if (existingMovements.length !== movements.length) {
+                await t.rollback();
+                return res.status(404).json({
+                    message: "Algunos movimientos no fueron encontrados",
+                });
+            }
+
+            // Crear nuevas asociaciones
+            await MovementItem.update(
+                { idMovementReport: report.id },
+                {
+                    where: { id: movements },
+                    transaction: t,
+                }
+            );
+        }
+
+        await t.commit();
+
+        res.status(200).json({
+            message: "Reporte actualizado exitosamente",
+            report,
+        });
+    } catch (error) {
+        await t.rollback();
+        console.error(error);
+        res.status(500).json({
+            message: "Error al actualizar el reporte",
             error: error.message,
         });
     }

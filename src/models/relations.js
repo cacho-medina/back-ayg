@@ -77,4 +77,12 @@ MovementItem.belongsTo(MovementReport, {
     as: "report",
 });
 
-export { User, Report, Transaction, Notification, File };
+export {
+    User,
+    Report,
+    Transaction,
+    Notification,
+    File,
+    MovementReport,
+    MovementItem,
+};

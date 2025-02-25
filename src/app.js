@@ -42,7 +42,7 @@ app.use(`${process.env.API_VERSION}/user/reports`, ReportsRoutes);
 app.use(`${process.env.API_VERSION}/user/transactions`, TransactionsRoutes);
 app.use(`${process.env.API_VERSION}/user/movements`, MovementRoutes);
 app.use(
-    `${process.env.API_VERSION}/user/movements/reports`,
+    `${process.env.API_VERSION}/user/movements/report`,
     MovementReportRoutes
 );
 app.use(`${process.env.API_VERSION}/admin`, SysadminRoutes);

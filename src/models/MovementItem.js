@@ -9,20 +9,6 @@ const MovementItem = sequelize.define(
             defaultValue: DataTypes.UUIDV4,
             primaryKey: true,
         },
-        number_account: {
-            type: DataTypes.STRING,
-            allowNull: false,
-        },
-        currency: {
-            type: DataTypes.STRING,
-            allowNull: false,
-            defaultValue: "USD",
-        },
-        broker: {
-            type: DataTypes.STRING,
-            allowNull: false,
-            defaultValue: "NinjaTrader LLC",
-        },
         position: {
             type: DataTypes.STRING,
             allowNull: false,
@@ -33,7 +19,7 @@ const MovementItem = sequelize.define(
             defaultValue: "US.100",
         },
         type: {
-            type: DataTypes.ENUM("Sell", "buy"),
+            type: DataTypes.ENUM("sell", "buy"),
             allowNull: false,
         },
         volume: {
@@ -41,7 +27,7 @@ const MovementItem = sequelize.define(
             allowNull: false,
         },
         open_price: {
-            type: DataTypes.DOUBLE,
+            type: DataTypes.FLOAT,
             allowNull: false,
         },
         time_open: {
@@ -49,7 +35,7 @@ const MovementItem = sequelize.define(
             allowNull: false,
         },
         commission: {
-            type: DataTypes.DOUBLE,
+            type: DataTypes.FLOAT,
             allowNull: false,
             defaultValue: 0,
         },
@@ -57,6 +43,14 @@ const MovementItem = sequelize.define(
             type: DataTypes.FLOAT,
             allowNull: false,
             defaultValue: 0,
+        },
+        idMovementReport: {
+            type: DataTypes.UUID,
+            allowNull: true,
+            references: {
+                model: "MovementReports",
+                key: "id",
+            },
         },
     },
     {

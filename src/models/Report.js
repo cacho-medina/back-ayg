@@ -39,6 +39,11 @@ const Report = sequelize.define(
             allowNull: false,
             defaultValue: 0,
         },
+        balance: {
+            type: DataTypes.DOUBLE,
+            allowNull: false,
+            defaultValue: 0,
+        },
     },
     {
         timestamps: false,

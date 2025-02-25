@@ -17,29 +17,52 @@ const MovementReport = sequelize.define(
                 key: "id",
             },
         },
-        fecha: {
+        number_account: {
+            type: DataTypes.STRING,
+            allowNull: false,
+        },
+        currency: {
+            type: DataTypes.STRING,
+            allowNull: false,
+            defaultValue: "USD",
+        },
+        broker: {
+            type: DataTypes.STRING,
+            allowNull: false,
+            defaultValue: "NinjaTrader LLC",
+        },
+        rentabilidad_total: {
+            type: DataTypes.FLOAT,
+            allowNull: false,
+            defaultValue: 0,
+        },
+        rentabilidad_personal: {
+            type: DataTypes.FLOAT,
+            allowNull: false,
+            defaultValue: 0,
+        },
+        gastos_operativos: {
+            type: DataTypes.FLOAT,
+            allowNull: false,
+            defaultValue: 0,
+        },
+        beneficio_empresa: {
+            type: DataTypes.FLOAT,
+            allowNull: false,
+            defaultValue: 0,
+        },
+        desgravamen: {
+            type: DataTypes.FLOAT,
+            allowNull: false,
+            defaultValue: 0,
+        },
+        open_frame: {
             type: DataTypes.DATE,
             allowNull: false,
-            defaultValue: DataTypes.NOW,
         },
-        totalOperaciones: {
-            type: DataTypes.INTEGER,
+        close_frame: {
+            type: DataTypes.DATE,
             allowNull: false,
-            defaultValue: 0,
-        },
-        gananciaTotal: {
-            type: DataTypes.DOUBLE,
-            allowNull: false,
-            defaultValue: 0,
-        },
-        comisionTotal: {
-            type: DataTypes.DOUBLE,
-            allowNull: false,
-            defaultValue: 0,
-        },
-        estado: {
-            type: DataTypes.ENUM("pendiente", "procesado", "error"),
-            defaultValue: "pendiente",
         },
     },
     {
