@@ -6,20 +6,92 @@ import { Op } from "sequelize";
 
 export const getTransactions = async (req, res) => {
     try {
-        const transactions = await Transaction.findAll({
-            order: [["fechaTransaccion", "DESC"]],
-            include: [
-                {
-                    model: User,
-                    as: "user",
-                    attributes: ["name", "plan", "capitalActual"],
-                },
-            ],
+        // Parámetros de paginación
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const offset = (page - 1) * limit;
+
+        // Parámetros de filtrado
+        const { tipo, montoMin, montoMax, fechaDesde, fechaHasta, sort } =
+            req.query;
+
+        // Construir objeto de filtros
+        const where = {};
+
+        // Filtro por tipo de transacción
+        if (tipo) {
+            where.tipo = tipo;
+        }
+
+        // Filtro por rango de monto
+        if (montoMin || montoMax) {
+            where.monto = {};
+            if (montoMin) {
+                where.monto[Op.gte] = parseFloat(montoMin);
+            }
+            if (montoMax) {
+                where.monto[Op.lte] = parseFloat(montoMax);
+            }
+        }
+
+        // Filtro por rango de fechas
+        if (fechaDesde || fechaHasta) {
+            where.fechaTransaccion = {};
+            if (fechaDesde && fechaHasta) {
+                where.fechaTransaccion = {
+                    [Op.between]: [new Date(fechaDesde), new Date(fechaHasta)],
+                };
+            } else if (fechaDesde) {
+                where.fechaTransaccion = { [Op.gte]: new Date(fechaDesde) };
+            } else if (fechaHasta) {
+                where.fechaTransaccion = { [Op.lte]: new Date(fechaHasta) };
+            }
+        }
+
+        // Configurar ordenamiento
+        const order = [];
+        if (sort === "date_des") {
+            order.push(["fechaTransaccion", "DESC"]);
+        } else if (sort === "date_asc") {
+            order.push(["fechaTransaccion", "ASC"]);
+        }
+
+        // Realizar la consulta con paginación y filtros
+        const { count, rows: transactions } = await Transaction.findAndCountAll(
+            {
+                where,
+                order,
+                limit,
+                offset,
+                include: [
+                    {
+                        model: User,
+                        as: "user",
+                        attributes: ["name", "plan", "capitalActual"],
+                    },
+                ],
+            }
+        );
+
+        // Calcular información de paginación
+        const totalPages = Math.ceil(count / limit);
+        const hasNextPage = page < totalPages;
+        const hasPrevPage = page > 1;
+
+        res.status(200).json({
+            transactions,
+            total: count,
+            totalPages,
+            currentPage: page,
+            hasNextPage,
+            hasPrevPage,
         });
-        res.status(200).json(transactions);
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: "Error getting transactions" });
+        res.status(500).json({
+            message: "Error al obtener las transacciones",
+            error: error.message,
+        });
     }
 };
 
@@ -46,18 +118,67 @@ export const getTransactionById = async (req, res) => {
 
 export const getTransactionByUserId = async (req, res) => {
     try {
-        const transaction = await Transaction.findAll({
-            where: { idUser: req.params.idUser },
-            order: [["fechaTransaccion", "DESC"]],
-            include: [
-                {
-                    model: User,
-                    as: "user",
-                    attributes: ["name", "plan", "capitalActual"],
-                },
-            ],
+        const { fechaDesde, fechaHasta, sort } = req.query;
+        // Parámetros de paginación
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const offset = (page - 1) * limit;
+
+        const where = {
+            idUser: req.params.idUser,
+        };
+
+        // Filtro por rango de fechas
+        if (fechaDesde || fechaHasta) {
+            where.fechaTransaccion = {};
+            if (fechaDesde && fechaHasta) {
+                where.fechaTransaccion = {
+                    [Op.between]: [new Date(fechaDesde), new Date(fechaHasta)],
+                };
+            } else if (fechaDesde) {
+                where.fechaTransaccion = { [Op.gte]: new Date(fechaDesde) };
+            } else if (fechaHasta) {
+                where.fechaTransaccion = { [Op.lte]: new Date(fechaHasta) };
+            }
+        }
+
+        // Configurar ordenamiento
+        const order = [];
+        if (sort === "date_des") {
+            order.push(["fechaTransaccion", "DESC"]);
+        } else if (sort === "date_asc") {
+            order.push(["fechaTransaccion", "ASC"]);
+        }
+
+        const { count, rows: transactions } = await Transaction.findAndCountAll(
+            {
+                where,
+                order,
+                include: [
+                    {
+                        model: User,
+                        as: "user",
+                        attributes: ["name", "plan", "capitalActual"],
+                    },
+                ],
+                limit,
+                offset,
+            }
+        );
+
+        // Calcular información de paginación
+        const totalPages = Math.ceil(count / limit);
+        const hasNextPage = page < totalPages;
+        const hasPrevPage = page > 1;
+
+        res.status(200).json({
+            transactions,
+            total: count,
+            totalPages,
+            currentPage: page,
+            hasNextPage,
+            hasPrevPage,
         });
-        res.status(200).json(transaction);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Error getting transaction" });

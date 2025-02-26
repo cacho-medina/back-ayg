@@ -31,7 +31,7 @@ const MovementItem = sequelize.define(
             allowNull: false,
         },
         time_open: {
-            type: DataTypes.DATE,
+            type: DataTypes.DATEONLY,
             allowNull: false,
         },
         commission: {

@@ -12,7 +12,7 @@ import {
 const router = Router();
 
 router.post("/create", authTokenJwt, authRole(["admin"]), createMovementReport);
-router.get("/all", authTokenJwt, authRole(["admin"]), getMovementReports);
+router.get("/all", authTokenJwt, getMovementReports);
 router.get("/:id", authTokenJwt, getMovementReportById);
 router.patch(
     "/update/:id",

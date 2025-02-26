@@ -22,7 +22,7 @@ const User = sequelize.define(
         password: { type: DataTypes.STRING, allowNull: false },
         phone: { type: DataTypes.STRING, allowNull: false },
         key: { type: DataTypes.STRING, allowNull: true }, //para futura implementacion de tarjeta nfc
-        cumpleaños: { type: DataTypes.DATE, allowNull: true },
+        cumpleaños: { type: DataTypes.DATEONLY, allowNull: true },
         role: {
             type: DataTypes.ENUM("admin", "client"),
             defaultValue: "client",
@@ -46,12 +46,17 @@ const User = sequelize.define(
             type: DataTypes.DOUBLE,
             allowNull: false,
         },
+        currency: {
+            type: DataTypes.STRING,
+            allowNull: false,
+            defaultValue: "USD",
+        },
         capitalActual: {
             type: DataTypes.DOUBLE,
             allowNull: false,
         },
         fechaRegistro: {
-            type: DataTypes.DATE,
+            type: DataTypes.DATEONLY,
             allowNull: false,
         },
     },

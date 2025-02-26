@@ -32,3 +32,9 @@ export const formatUTCToLocal = (
 ) => {
     return new Date(utcDate).toLocaleString("es-AR", { timeZone: timezone });
 };
+
+export const formatDate = (fecha) => {
+    console.log(typeof fecha);
+    const [day, month, year] = fecha.split("-");
+    return `${year}/${month}/${day}`;
+};

@@ -8,7 +8,6 @@ export const createMovementReport = async (req, res) => {
 
     try {
         const {
-            idUser,
             number_account,
             currency,
             broker,
@@ -22,13 +21,6 @@ export const createMovementReport = async (req, res) => {
             comision_total,
             movements, // Array de IDs de movimientos
         } = req.body;
-
-        // Verificar usuario
-        const user = await User.findByPk(idUser, { transaction: t });
-        if (!user) {
-            await t.rollback();
-            return res.status(404).json({ message: "Usuario no encontrado" });
-        }
 
         // Verificar que existan todos los movimientos
         const existingMovements = await MovementItem.findAll({
@@ -48,7 +40,6 @@ export const createMovementReport = async (req, res) => {
         // Crear reporte
         const report = await MovementReport.create(
             {
-                idUser,
                 number_account,
                 currency,
                 broker,
@@ -60,6 +51,7 @@ export const createMovementReport = async (req, res) => {
                 open_frame,
                 close_frame,
                 comision_total,
+                fechaEmision: new Date().toISOString().split("T")[0],
             },
             { transaction: t }
         );
@@ -93,23 +85,35 @@ export const createMovementReport = async (req, res) => {
 
 export const getMovementReports = async (req, res) => {
     try {
-        const reports = await MovementReport.findAll({
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 15;
+        const offset = (page - 1) * limit;
+        const { count, rows: reports } = await MovementReport.findAndCountAll({
             include: [
-                {
-                    model: User,
-                    as: "user",
-                    attributes: ["name", "email"],
-                },
                 {
                     model: MovementItem,
                     as: "movements",
                     order: [["time_open", "DESC"]],
                 },
             ],
-            order: [["createdAt", "DESC"]],
+            order: [["fechaEmision", "DESC"]],
+            limit,
+            offset,
         });
 
-        res.status(200).json(reports);
+        // Calcular información de paginación
+        const totalPages = Math.ceil(count / limit);
+        const hasNextPage = page < totalPages;
+        const hasPrevPage = page > 1;
+
+        res.status(200).json({
+            reports,
+            total: count,
+            currentPage: page,
+            totalPages,
+            hasNextPage,
+            hasPrevPage,
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({

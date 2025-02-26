@@ -2,13 +2,31 @@ import MovementItem from "../models/MovementItem.js";
 import MovementReport from "../models/MovementReport.js";
 import fs from "fs";
 import ExcelJS from "exceljs";
+import { formatDate } from "../utils/dateUtils.js";
+import sequelize from "../config/db.js";
 
 export const getMovements = async (req, res) => {
     try {
-        const movements = await MovementItem.findAll({
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 15;
+        const offset = (page - 1) * limit;
+        const { count, rows: movements } = await MovementItem.findAndCountAll({
             order: [["time_open", "DESC"]],
+            limit,
+            offset,
         });
-        res.status(200).json(movements);
+        // Calcular información de paginación
+        const totalPages = Math.ceil(count / limit);
+        const hasNextPage = page < totalPages;
+        const hasPrevPage = page > 1;
+        res.status(200).json({
+            movements,
+            total: count,
+            currentPage: page,
+            totalPages,
+            hasNextPage,
+            hasPrevPage,
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Error al obtener los movimientos" });
@@ -53,7 +71,7 @@ export const createMovement = async (req, res) => {
             type,
             volume,
             open_price: parseFloat(open_price),
-            time_open: new Date(time_open),
+            time_open: time_open,
             comission: parseFloat(comission),
             gross_pl: parseFloat(gross_pl),
         });
@@ -69,12 +87,28 @@ export const createMovement = async (req, res) => {
 };
 
 export const uploadMovements = async (req, res) => {
+    const t = await sequelize.transaction();
+
     try {
         if (!req.file) {
             return res
                 .status(400)
                 .json({ message: "No se ha subido ningún archivo" });
         }
+
+        const {
+            fechaEmision,
+            number_account,
+            currency,
+            broker,
+            rentabilidad_total,
+            rentabilidad_personal,
+            gastos_operativos,
+            beneficio_empresa,
+            desgravamen,
+            open_frame,
+            close_frame,
+        } = req.body;
 
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.readFile(req.file.path);
@@ -136,18 +170,6 @@ export const uploadMovements = async (req, res) => {
             });
         }
 
-        function parseDate(dateString) {
-            if (!dateString) return null;
-
-            // Si la fecha viene en formato dd/mm/yyyy
-            const [day, month, year] = dateString.split("-").map(Number);
-            if (day && month && year) {
-                const date = new Date(year, month - 1, day);
-                return date;
-            }
-
-            return null;
-        }
         //se parsean los datos
         const movements = data
             .map((row) => {
@@ -180,7 +202,7 @@ export const uploadMovements = async (req, res) => {
                     type,
                     volume,
                     open_price,
-                    time_open,
+                    time_open: formatDate(time_open),
                     commission,
                     gross_pl,
                 };
@@ -209,25 +231,53 @@ export const uploadMovements = async (req, res) => {
                 type: movement.type,
                 volume: movement.volume,
                 open_price: movement.open_price,
-                time_open: parseDate(movement.time_open),
+                time_open: movement.time_open,
                 commission: movement.commission,
                 gross_pl: movement.gross_pl,
             })),
             {
                 validate: true,
                 returning: true,
+                transaction: t,
             }
         );
+
+        //Crear un reporte y asociar movimientos a el
+        const report = await MovementReport.create(
+            {
+                fechaEmision:
+                    fechaEmision || new Date().toISOString().split("T")[0],
+                number_account,
+                currency,
+                broker,
+                rentabilidad_total: parseFloat(rentabilidad_total),
+                rentabilidad_personal: parseFloat(rentabilidad_personal),
+                gastos_operativos: parseFloat(gastos_operativos),
+                beneficio_empresa: parseFloat(beneficio_empresa),
+                desgravamen: parseFloat(desgravamen),
+                open_frame: open_frame,
+                close_frame: close_frame,
+            },
+            { transaction: t }
+        );
+
+        await report.addMovementItems(movementsCreated, { transaction: t });
+
+        // Si todo sale bien, confirmamos la transacción
+        await t.commit();
 
         return res.status(201).json({
             message: "Movimientos importados correctamente",
             cantidad: movementsCreated.length,
+            report,
         });
     } catch (error) {
+        // Si algo falla, revertimos la transacción
+        await t.rollback();
         console.error(error);
         res.status(500).json({
             message: "Error al procesar el archivo Excel",
-            error,
+            error: error.message,
         });
     } finally {
         // Limpiar el archivo temporal

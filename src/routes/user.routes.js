@@ -6,6 +6,7 @@ import {
     deleteUser,
     changeUserStatus,
     activateUser,
+    getUserByName,
 } from "../controllers/user.controllers.js";
 import { getClients } from "../controllers/admin.controllers.js";
 import authTokenJwt from "../middleware/authTokenJwt.js";
@@ -14,6 +15,7 @@ import authRole from "../middleware/authRole.js";
 const router = Router();
 
 router.get("/all", authTokenJwt, getUsers);
+router.get("/nombre/:name", authTokenJwt, getUserByName);
 router.get("/clients", authTokenJwt, authRole(["admin"]), getClients);
 router.get("/:id", authTokenJwt, getUserById);
 router.patch("/update/:id", authTokenJwt, updateUser);

@@ -32,6 +32,7 @@ const Transaction = sequelize.define(
         fechaTransaccion: {
             type: DataTypes.DATE,
             allowNull: false,
+            defaultValue: sequelize.literal("CURRENT_TIMESTAMP"),
         },
     },
     {

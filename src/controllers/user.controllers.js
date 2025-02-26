@@ -1,13 +1,88 @@
 import User from "../models/User.js";
+import { Op } from "sequelize";
 
 //obtener todos los usuarios, tanto admins y clientes
 export const getUsers = async (req, res) => {
     try {
-        const users = await User.findAll();
-        res.status(200).json(users);
+        // Parámetros de paginación
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 15;
+        const offset = (page - 1) * limit;
+
+        // Parámetros de filtrado
+        const { search, plan, sort } = req.query;
+
+        // Construir objeto de filtros
+        const where = {};
+
+        // Búsqueda por nombre o email
+        if (search) {
+            where[Op.or] = [
+                { name: { [Op.iLike]: `%${search}%` } },
+                { email: { [Op.iLike]: `%${search}%` } },
+            ];
+        }
+        if (plan) {
+            where.plan = plan;
+        }
+
+        // Configurar ordenamiento
+        const order = [];
+        if (sort === "date_des") {
+            order.push(["fechaRegistro", "DESC"]);
+        } else if (sort === "date_asc") {
+            order.push(["fechaRegistro", "ASC"]);
+        }
+
+        // Realizar la consulta con paginación y filtros
+        const { count, rows: users } = await User.findAndCountAll({
+            where,
+            order,
+            limit,
+            offset,
+            attributes: {
+                exclude: ["password"], // Excluir el campo password de la respuesta
+            },
+        });
+
+        // Calcular información de paginación
+        const totalPages = Math.ceil(count / limit);
+        const hasNextPage = page < totalPages;
+        const hasPrevPage = page > 1;
+
+        res.status(200).json({
+            users,
+            total: count,
+            currentPage: page,
+            totalPages,
+            hasNextPage,
+            hasPrevPage,
+        });
     } catch (error) {
         console.error(error);
-        res.status(404).json({ message: "Error al obtener los usuarios" });
+        res.status(500).json({
+            message: "Error al obtener los usuarios",
+            error: error.message,
+        });
+    }
+};
+
+export const getUserByName = async (req, res) => {
+    try {
+        const user = await User.findOne({
+            where: {
+                name: { [Op.iLike]: `%${req.params.name}%` },
+                isActive: true,
+                isDeleted: false,
+            },
+        });
+        if (!user) {
+            return res.status(404).json({ message: "Usuario no encontrado" });
+        }
+        res.status(200).json(user);
+    } catch (error) {
+        console.error(error);
+        res.status(404).json({ message: "Error al obtener el usuario" });
     }
 };
 

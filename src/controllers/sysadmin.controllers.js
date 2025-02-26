@@ -6,9 +6,9 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import { sendCustomEmail } from "../helpers/mails/sendEmail.js";
-import { getCurrentUTCYear } from "../utils/dateUtils.js";
 import File from "../models/File.js";
 import MovementReport from "../models/MovementReport.js";
+import Transaction from "../models/Transaction.js";
 
 export const getEstadisticas = async (req, res) => {
     const t = await sequelize.transaction();
@@ -19,104 +19,94 @@ export const getEstadisticas = async (req, res) => {
         const currentYear = now.getUTCFullYear();
         const currentMonth = now.getUTCMonth();
 
+        // Calcular primer día del mes actual y del mes anterior
+        const inicioMesActual = new Date(currentYear, currentMonth, 1);
+        const inicioMesSiguiente = new Date(currentYear, currentMonth + 1, 1);
+
         // Calcular primer día de hace 6 meses
         const sixMonthsAgo = new Date(now);
         sixMonthsAgo.setMonth(now.getMonth() - 5);
         sixMonthsAgo.setDate(1);
         sixMonthsAgo.setHours(0, 0, 0, 0);
 
-        // 2. Estadísticas básicas
-        const [activeClients, totalReports, movementReports] =
+        // 2. Obtener balance total actual y cantidad de usuarios activos
+        const [balanceTotal, usuariosActivos] = await Promise.all([
+            User.sum("capitalActual", {
+                where: {
+                    isActive: true,
+                    isDeleted: false,
+                },
+                transaction: t,
+            }),
+            User.count({
+                where: {
+                    isActive: true,
+                    isDeleted: false,
+                },
+                transaction: t,
+            }),
+        ]);
+
+        // 3. Obtener estadísticas del último mes
+        const [reportesUltimoMes, transaccionesUltimoMes, rentaUltimoMes] =
             await Promise.all([
-                User.count({
-                    where: {
-                        role: "client",
-                        isActive: true,
-                        isDeleted: false,
-                    },
-                    transaction: t,
-                }),
                 Report.count({
                     where: {
                         fechaEmision: {
-                            [Op.gte]: new Date(currentYear, currentMonth, 1),
-                            [Op.lt]: new Date(currentYear, currentMonth + 1, 1),
+                            [Op.gte]: inicioMesActual,
+                            [Op.lt]: inicioMesSiguiente,
                         },
                     },
                     transaction: t,
                 }),
-                MovementReport.count({
+                Transaction.findOne({
+                    attributes: [
+                        [sequelize.fn("COUNT", sequelize.col("id")), "total"],
+                        [
+                            sequelize.literal(
+                                `SUM(CASE WHEN tipo = 'deposito' THEN monto ELSE 0 END)`
+                            ),
+                            "ingresos",
+                        ],
+                        [
+                            sequelize.literal(
+                                `SUM(CASE WHEN tipo = 'retiro' THEN monto ELSE 0 END)`
+                            ),
+                            "extracciones",
+                        ],
+                    ],
                     where: {
-                        close_frame: {
-                            [Op.gte]: new Date(currentYear, currentMonth, 1),
-                            [Op.lt]: new Date(currentYear, currentMonth + 1, 1),
+                        fechaTransaccion: {
+                            [Op.gte]: inicioMesActual,
+                            [Op.lt]: inicioMesSiguiente,
+                        },
+                        status: "completado",
+                    },
+                    transaction: t,
+                }),
+                Report.findOne({
+                    attributes: [
+                        [
+                            sequelize.fn("AVG", sequelize.col("renta")),
+                            "rentaPromedio",
+                        ],
+                    ],
+                    where: {
+                        fechaEmision: {
+                            [Op.gte]: inicioMesActual,
+                            [Op.lt]: inicioMesSiguiente,
                         },
                     },
                     transaction: t,
                 }),
             ]);
 
-        // 3. Calcular rentabilidad promedio de movimientos
-        const movementStats = await MovementReport.findAll({
-            where: {
-                close_frame: {
-                    [Op.gte]: sixMonthsAgo,
-                    [Op.lt]: new Date(currentYear, currentMonth + 1, 1),
-                },
-            },
-            attributes: [
-                [
-                    sequelize.fn(
-                        "date_trunc",
-                        "month",
-                        sequelize.col("close_frame")
-                    ),
-                    "mes",
-                ],
-                [
-                    sequelize.fn("AVG", sequelize.col("rentabilidad_total")),
-                    "rentabilidadPromedio",
-                ],
-                [
-                    sequelize.fn("AVG", sequelize.col("rentabilidad_personal")),
-                    "rentabilidadPersonalPromedio",
-                ],
-            ],
-            group: [
-                sequelize.fn(
-                    "date_trunc",
-                    "month",
-                    sequelize.col("close_frame")
-                ),
-            ],
-            order: [
-                [
-                    sequelize.fn(
-                        "date_trunc",
-                        "month",
-                        sequelize.col("close_frame")
-                    ),
-                    "ASC",
-                ],
-            ],
-            transaction: t,
-        });
-
-        // 4. Balance total del sistema
-        const totalBalance = await User.sum("capitalActual", {
-            where: {
-                isActive: true,
-                isDeleted: false,
-            },
-            transaction: t,
-        });
-
-        // 5. Historial de rentabilidad últimos 6 meses (reportes mensuales)
+        // 4. Obtener evolución mensual del balance y rentabilidad
         const monthlyStats = await Report.findAll({
             where: {
                 fechaEmision: {
                     [Op.gte]: sixMonthsAgo,
-                    [Op.lt]: new Date(currentYear, currentMonth + 1, 1),
+                    [Op.lt]: inicioMesSiguiente,
                 },
             },
             attributes: [
@@ -128,10 +118,8 @@ export const getEstadisticas = async (req, res) => {
                     ),
                     "mes",
                 ],
-                [
-                    sequelize.fn("AVG", sequelize.col("renta")),
-                    "rentabilidadPromedio",
-                ],
+                [sequelize.fn("SUM", sequelize.col("balance")), "balance"],
+                [sequelize.fn("AVG", sequelize.col("renta")), "rentabilidad"],
             ],
             group: [
                 sequelize.fn(
@@ -153,34 +141,54 @@ export const getEstadisticas = async (req, res) => {
             transaction: t,
         });
 
+        const mesesAbreviados = [
+            "Ene",
+            "Feb",
+            "Mar",
+            "Abr",
+            "May",
+            "Jun",
+            "Jul",
+            "Ago",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dic",
+        ];
+
+        const data = monthlyStats.map((stat) => ({
+            month: mesesAbreviados[new Date(stat.dataValues.mes).getMonth()],
+            balance: parseFloat(stat.dataValues.balance).toFixed(2),
+            rentabilidad: parseFloat(stat.dataValues.rentabilidad).toFixed(2),
+        }));
+
         await t.commit();
 
         res.status(200).json({
-            estadisticasActuales: {
-                clientesActivos: activeClients,
-                reportesMes: totalReports,
-                movimientosMes: movementReports,
+            balanceTotal: parseFloat(balanceTotal).toFixed(2),
+            rentaUltimoMes: parseFloat(
+                rentaUltimoMes?.dataValues?.rentaPromedio || 0
+            ).toFixed(2),
+            estadisticasMensuales: {
+                usuariosActivos,
+                reportesGenerados: reportesUltimoMes,
+                transacciones: {
+                    total: parseInt(
+                        transaccionesUltimoMes?.dataValues?.total || 0
+                    ),
+                    ingresos: parseFloat(
+                        transaccionesUltimoMes?.dataValues?.ingresos || 0
+                    ).toFixed(2),
+                    extracciones: parseFloat(
+                        transaccionesUltimoMes?.dataValues?.extracciones || 0
+                    ).toFixed(2),
+                },
             },
-            balanceTotal: totalBalance,
-            rentabilidadMensual: monthlyStats.map((stat) => ({
-                mes: stat.dataValues.mes,
-                rentabilidad: parseFloat(
-                    stat.dataValues.rentabilidadPromedio
-                ).toFixed(2),
-            })),
-            rentabilidadMovimientos: movementStats.map((stat) => ({
-                mes: stat.dataValues.mes,
-                rentabilidadTotal: parseFloat(
-                    stat.dataValues.rentabilidadPromedio
-                ).toFixed(2),
-                rentabilidadPersonal: parseFloat(
-                    stat.dataValues.rentabilidadPersonalPromedio
-                ).toFixed(2),
-            })),
+            data,
         });
     } catch (error) {
         await t.rollback();
-        console.error("Error en getEstadisticasAdmin:", error);
+        console.error("Error en getEstadisticas:", error);
         res.status(500).json({
             message: "Error al obtener estadísticas administrativas",
             error: error.message,
@@ -280,8 +288,6 @@ export const getEstadisticasByUser = async (req, res) => {
         const balanceActual = parseFloat(
             data[data.length - 1]?.balance || user.capitalActual
         );
-        const rendimientoTotal =
-            ((balanceActual - balanceInicial) / balanceInicial) * 100;
 
         await t.commit();
 
@@ -289,7 +295,6 @@ export const getEstadisticasByUser = async (req, res) => {
             plan: user.plan,
             estadisticasGenerales: {
                 rendimientoPromedio: rendimientoPromedio.toFixed(2),
-                rendimientoTotal: rendimientoTotal.toFixed(2),
                 balanceInicial: balanceInicial.toFixed(2),
                 balanceActual: balanceActual.toFixed(2),
             },
@@ -352,15 +357,12 @@ export const uploadFile = async (req, res) => {
     const t = await sequelize.transaction();
 
     try {
-        const { titulo, descripcion } = req.body;
+        const { titulo, descripcion, proposito, idUser } = req.body;
         if (!req.file) {
             return res.status(400).json({
                 message: "No se ha subido ningún archivo",
             });
         }
-
-        // Obtener el idUser del query params (opcional)
-        const { idUser } = req.query;
 
         // Si se proporciona idUser, verificar que el usuario existe
         if (idUser) {
@@ -381,7 +383,7 @@ export const uploadFile = async (req, res) => {
                 originalName: req.file.originalname,
                 path: req.file.path,
                 size: req.file.size,
-                type: req.file.mimetype,
+                type: proposito,
                 titulo: titulo || null,
                 descripcion: descripcion || null,
             },
@@ -462,13 +464,77 @@ export const downloadFile = async (req, res) => {
 export const getFiles = async (req, res) => {
     try {
         const files = await File.findAll({
-            where: {
-                idUser: null,
-            },
+            order: [["createdAt", "DESC"]],
         });
         res.status(200).json(files);
     } catch (error) {
         console.error("Error en getFiles:", error);
         res.status(500).json({ message: error });
+    }
+};
+
+export const getFileByUserId = async (req, res) => {
+    try {
+        const { idUser } = req.params;
+        if (!idUser) {
+            return res.status(400).json({ message: "Falta el id del usuario" });
+        }
+
+        // Buscar archivos que pertenezcan al usuario O sean archivos generales (idUser = null)
+        const files = await File.findAll({
+            where: {
+                [Op.or]: [{ idUser }, { idUser: null }],
+            },
+            order: [["createdAt", "DESC"]],
+        });
+
+        res.status(200).json(files);
+    } catch (error) {
+        console.error("Error en getFileByUserId:", error);
+        res.status(500).json({
+            message: "Error al obtener los archivos del usuario",
+        });
+    }
+};
+
+export const getFilesByType = async (req, res) => {
+    try {
+        const { type } = req.params;
+        const files = await File.findAll({ where: { type } });
+        res.status(200).json(files);
+    } catch (error) {
+        console.error("Error en getFilesByType:", error);
+        res.status(500).json({
+            message: "Error al obtener los archivos del tipo",
+            error: error.message,
+        });
+    }
+};
+
+export const deleteFile = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const file = await File.findByPk(id);
+
+        if (!file) {
+            return res.status(404).json({ message: "Archivo no encontrado" });
+        }
+
+        // Eliminar archivo físico
+        const filePath = file.path;
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+        }
+
+        // Eliminar registro de la base de datos
+        await file.destroy();
+
+        res.status(200).json({ message: "Archivo eliminado correctamente" });
+    } catch (error) {
+        console.error("Error en deleteFile:", error);
+        res.status(500).json({
+            message: "Error al eliminar el archivo",
+            error: error.message,
+        });
     }
 };

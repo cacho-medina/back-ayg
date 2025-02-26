@@ -9,13 +9,10 @@ const MovementReport = sequelize.define(
             defaultValue: DataTypes.UUIDV4,
             primaryKey: true,
         },
-        idUser: {
-            type: DataTypes.UUID,
+        fechaEmision: {
+            type: DataTypes.DATEONLY,
             allowNull: false,
-            references: {
-                model: "Users",
-                key: "id",
-            },
+            defaultValue: sequelize.literal("CURRENT_DATE"),
         },
         number_account: {
             type: DataTypes.STRING,
@@ -57,17 +54,16 @@ const MovementReport = sequelize.define(
             defaultValue: 0,
         },
         open_frame: {
-            type: DataTypes.DATE,
+            type: DataTypes.DATEONLY,
             allowNull: false,
         },
         close_frame: {
-            type: DataTypes.DATE,
+            type: DataTypes.DATEONLY,
             allowNull: false,
         },
     },
     {
-        createdAt: true,
-        updatedAt: false,
+        timestamps: false,
     }
 );
 

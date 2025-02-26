@@ -5,10 +5,13 @@ import {
     downloadFile,
     getEstadisticas,
     getEstadisticasByUser,
+    getFileByUserId,
     getFiles,
+    getFilesByType,
     sendEmail,
     sendWp,
     uploadFile,
+    deleteFile,
 } from "../controllers/sysadmin.controllers.js";
 import upload from "../middleware/upload.js";
 
@@ -26,6 +29,14 @@ router.post(
 );
 
 router.get("/files", authTokenJwt, getFiles);
+router.get("/files/:idUser", authTokenJwt, getFileByUserId);
+router.get("/files/type/:type", authTokenJwt, getFilesByType);
+router.delete(
+    "/files/delete/:id",
+    authTokenJwt,
+    authRole(["admin"]),
+    deleteFile
+);
 
 router.get("/download-file/:filename", authTokenJwt, downloadFile);
 //envio de correos personalizados

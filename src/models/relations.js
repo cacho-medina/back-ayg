@@ -56,17 +56,6 @@ File.belongsTo(User, {
     as: "user",
 });
 
-// Añadir estas relaciones
-User.hasMany(MovementReport, {
-    foreignKey: "idUser",
-    as: "movementReports",
-});
-
-MovementReport.belongsTo(User, {
-    foreignKey: "idUser",
-    as: "user",
-});
-
 MovementReport.hasMany(MovementItem, {
     foreignKey: "idMovementReport",
     as: "movements",

@@ -50,13 +50,15 @@ export const signUpUser = async (req, res) => {
             email,
             name,
             password,
-            cumpleaños,
+            birthday,
             capitalInicial,
             plan,
             fechaRegistro,
             phone,
+            currency,
         } = req.body;
 
+        console.log(req.body);
         // Verificar si el usuario ya existe
         const existingUser = await User.findOne({
             where: { email },
@@ -78,15 +80,17 @@ export const signUpUser = async (req, res) => {
                 email,
                 name,
                 password: hashedPassword,
-                cumpleaños,
+                cumpleaños: birthday,
                 role: "client",
                 capitalInicial,
                 isActive: true,
                 isDeleted: false,
                 capitalActual: capitalInicial,
                 plan,
-                fechaRegistro: fechaRegistro || new Date().toISOString(),
+                fechaRegistro:
+                    fechaRegistro || new Date().toISOString().split("T")[0],
                 phone,
+                currency,
             },
             { transaction: t }
         );
@@ -105,6 +109,7 @@ export const signUpUser = async (req, res) => {
                 name: user.name,
                 role: user.role,
                 phone: user.phone,
+                currency: user.currency,
             },
         });
     } catch (error) {
@@ -127,6 +132,7 @@ export const signUpAdmin = async (req, res) => {
             capitalInicial,
             plan,
             phone,
+            currency,
         } = req.body;
 
         // Verificar si el usuario ya existe
@@ -157,8 +163,9 @@ export const signUpAdmin = async (req, res) => {
                 isDeleted: false,
                 capitalActual: capitalInicial || 0,
                 plan: plan || "A",
-                fechaRegistro: new Date().toISOString(),
+                fechaRegistro: new Date().toISOString().split("T")[0],
                 phone,
+                currency,
             },
             { transaction: t }
         );
@@ -182,6 +189,7 @@ export const signUpAdmin = async (req, res) => {
                 name: user.name,
                 role: user.role,
                 phone: user.phone,
+                currency: user.currency,
             },
         });
     } catch (error) {

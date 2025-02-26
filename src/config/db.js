@@ -8,6 +8,7 @@ const sequelize = new Sequelize(`${POSTGRES_URI}`, {
     dialectModule: pg,
     native: false,
     logging: false,
+    timezone: "UTC",
     /* pool: {
         max: 10,
         min: 2,

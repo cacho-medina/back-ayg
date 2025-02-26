@@ -28,6 +28,7 @@ const File = sequelize.define(
         type: {
             type: DataTypes.STRING,
             allowNull: false,
+            defaultValue: "general",
         },
         size: {
             type: DataTypes.FLOAT,

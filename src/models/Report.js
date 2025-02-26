@@ -30,9 +30,9 @@ const Report = sequelize.define(
             defaultValue: 0,
         },
         fechaEmision: {
-            type: DataTypes.DATE,
+            type: DataTypes.DATEONLY,
             allowNull: false,
-            defaultValue: DataTypes.NOW, // Fecha actual por defecto
+            defaultValue: sequelize.literal("CURRENT_DATE"), // Fecha actual por defecto
         },
         extraccion: {
             type: DataTypes.DOUBLE,
