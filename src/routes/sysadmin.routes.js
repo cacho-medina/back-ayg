@@ -40,7 +40,7 @@ router.delete(
 
 router.get("/download-file/:filename", authTokenJwt, downloadFile);
 //envio de correos personalizados
-router.post("/send-email", authTokenJwt, authRole(["admin"]), sendEmail);
+router.post("/send-email", authTokenJwt, sendEmail);
 //futura implementacion
 router.post("/send-wp", authTokenJwt, authRole(["admin"]), sendWp);
 

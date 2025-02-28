@@ -252,12 +252,29 @@ export const sendTransactionConfirmationEmail = async (
 export const sendCustomEmail = async (email, name, subject, message) => {
     const mailOptions = {
         from: `A&G <${process.env.EMAIL_USER}>`,
-        to: email,
+        to: `A&G <${process.env.EMAIL_USER}>`,
         subject: subject,
-        html: emailTemplate(`
-            <p>Hola ${name},</p>
-            <p>${message}</p>
-        `),
+        html: `
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden;">
+                <!-- Header -->
+                <div style="background-color: #000000; padding: 20px; text-align: center; font-family: Helvetica;">
+                    <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 300;">Albornoz & Guerineau</h1>
+                    <p style="color: #ffffff; margin: 5px 0 0; font-size: 16px; font-weight: 300;">Servicios Bursátiles</p>
+                </div>
+                <div style="padding: 30px 20px; font-family: Helvetica; min-height: 200px;">
+                    <p>Mensaje enviado por: <strong>${name}</strong>.</p>
+                    <p>${message}</p>
+                    <p>Responda a este correo: <strong>${email}</strong></p>
+                </div>
+                
+                <!-- Footer -->
+                <div style="background-color: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666666; font-family: Helvetica;">
+                    <p style="margin: 0;">© Powered by <a href="https://www.instagram.com/koistudiook" target="_blank">Koi Studio</a> </p>
+                </div>
+            </div>
+        </div>
+    `,
     };
 
     await transporter.sendMail(mailOptions);

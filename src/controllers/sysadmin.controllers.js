@@ -312,27 +312,27 @@ export const getEstadisticasByUser = async (req, res) => {
 
 export const sendEmail = async (req, res) => {
     try {
-        const { email, subject, message, name } = req.body;
+        const { subject, message, name, idUser } = req.body;
 
-        if (!email || !subject || !message) {
+        if (!name || !subject || !message) {
             return res.status(400).json({
-                message: "Faltan campos requeridos (email, subject, message)",
+                message: "Faltan campos requeridos (name, subject, message)",
             });
         }
 
-        const finded = await User.findOne({ where: { email } });
+        const finded = await User.findOne({ where: { id: idUser } });
         if (!finded) {
             return res.status(404).json({
-                message: "No existe un usuario con este email",
+                message: "No existe el usuario",
             });
         }
 
         try {
-            await sendCustomEmail(email, name, subject, message);
+            await sendCustomEmail(finded.email, name, subject, message);
 
             res.status(200).json({
                 message: "Email enviado exitosamente",
-                to: email,
+                to: finded.email,
             });
         } catch (error) {
             console.error("Error al enviar email:", error);
@@ -463,10 +463,28 @@ export const downloadFile = async (req, res) => {
 
 export const getFiles = async (req, res) => {
     try {
-        const files = await File.findAll({
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 15;
+        const offset = (page - 1) * limit;
+
+        const { count, rows: files } = await File.findAndCountAll({
             order: [["createdAt", "DESC"]],
+            limit,
+            offset,
         });
-        res.status(200).json(files);
+
+        // Calcular información de paginación
+        const totalPages = Math.ceil(count / limit);
+        const hasNextPage = page < totalPages;
+        const hasPrevPage = page > 1;
+        res.status(200).json({
+            files,
+            total: count,
+            currentPage: page,
+            totalPages,
+            hasNextPage,
+            hasPrevPage,
+        });
     } catch (error) {
         console.error("Error en getFiles:", error);
         res.status(500).json({ message: error });
@@ -476,19 +494,40 @@ export const getFiles = async (req, res) => {
 export const getFileByUserId = async (req, res) => {
     try {
         const { idUser } = req.params;
-        if (!idUser) {
-            return res.status(400).json({ message: "Falta el id del usuario" });
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 15;
+        const offset = (page - 1) * limit;
+
+        const finded = await User.findByPk(idUser);
+        if (!finded) {
+            return res.status(404).json({
+                message: "No existe el usuario",
+            });
         }
 
         // Buscar archivos que pertenezcan al usuario O sean archivos generales (idUser = null)
-        const files = await File.findAll({
+        const { count, rows: files } = await File.findAndCountAll({
             where: {
                 [Op.or]: [{ idUser }, { idUser: null }],
             },
             order: [["createdAt", "DESC"]],
+            limit,
+            offset,
         });
 
-        res.status(200).json(files);
+        // Calcular información de paginación
+        const totalPages = Math.ceil(count / limit);
+        const hasNextPage = page < totalPages;
+        const hasPrevPage = page > 1;
+
+        res.status(200).json({
+            files,
+            total: count,
+            currentPage: page,
+            totalPages,
+            hasNextPage,
+            hasPrevPage,
+        });
     } catch (error) {
         console.error("Error en getFileByUserId:", error);
         res.status(500).json({

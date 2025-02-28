@@ -50,10 +50,10 @@ export const getTransactions = async (req, res) => {
 
         // Configurar ordenamiento
         const order = [];
-        if (sort === "date_des") {
-            order.push(["fechaTransaccion", "DESC"]);
-        } else if (sort === "date_asc") {
+        if (sort === "date_asc") {
             order.push(["fechaTransaccion", "ASC"]);
+        } else {
+            order.push(["fechaTransaccion", "DESC"]);
         }
 
         // Realizar la consulta con paginación y filtros
@@ -207,21 +207,22 @@ export const extraccion = async (req, res) => {
             });
         }
 
-        // Actualizar capital del usuario
-        user.capitalActual -= monto;
-        await user.save({ transaction: t });
-
         // Crear la transacción
         const transaction = await Transaction.create(
             {
                 idUser,
                 monto,
                 tipo: "retiro",
-                fechaTransaccion: new Date(fechaTransaccion).toISOString(),
+                fechaTransaccion:
+                    fechaTransaccion || new Date().toISOString().split("T")[0],
                 status: "completado",
             },
             { transaction: t }
         );
+
+        // Actualizar capital del usuario
+        user.capitalActual -= monto;
+        await user.save({ transaction: t });
 
         // Si todo está bien, confirmar la transacción
         await t.commit();
@@ -274,11 +275,16 @@ export const deposito = async (req, res) => {
                 idUser,
                 monto,
                 tipo: "deposito",
-                fechaTransaccion: new Date(fechaTransaccion).toISOString(),
+                fechaTransaccion:
+                    fechaTransaccion || new Date().toISOString().split("T")[0],
                 status: "completado",
             },
             { transaction: t }
         );
+
+        // Actualizar capital del usuario
+        user.capitalActual += monto;
+        await user.save({ transaction: t });
 
         // Crear notificación de solicitud de depósito
         /* await createNotification(
