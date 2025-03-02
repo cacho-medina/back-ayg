@@ -1,6 +1,9 @@
 import Transaction from "../models/Transaction.js";
 import User from "../models/User.js";
-import { sendTransactionConfirmationEmail } from "../helpers/mails/sendEmail.js";
+import {
+    sendTransactionConfirmationEmail,
+    sendTransactionRequestEmail,
+} from "../helpers/mails/sendEmail.js";
 import sequelize from "../config/db.js";
 import { Op } from "sequelize";
 
@@ -67,7 +70,7 @@ export const getTransactions = async (req, res) => {
                     {
                         model: User,
                         as: "user",
-                        attributes: ["name", "plan", "capitalActual"],
+                        attributes: ["name", "plan", "capitalActual", "email"],
                     },
                 ],
             }
@@ -144,10 +147,10 @@ export const getTransactionByUserId = async (req, res) => {
 
         // Configurar ordenamiento
         const order = [];
-        if (sort === "date_des") {
-            order.push(["fechaTransaccion", "DESC"]);
-        } else if (sort === "date_asc") {
+        if (sort === "date_asc") {
             order.push(["fechaTransaccion", "ASC"]);
+        } else {
+            order.push(["fechaTransaccion", "DESC"]);
         }
 
         const { count, rows: transactions } = await Transaction.findAndCountAll(
@@ -185,11 +188,11 @@ export const getTransactionByUserId = async (req, res) => {
     }
 };
 
-export const extraccion = async (req, res) => {
-    const t = await sequelize.transaction();
-
+export const requestTransaction = async (req, res) => {
     try {
-        const { idUser, monto, fechaTransaccion } = req.body;
+        const { idUser, monto, tipo, fechaTransaccion } = req.body;
+
+        const t = await sequelize.transaction();
 
         // Buscar usuario dentro de la transacción
         const user = await User.findByPk(idUser, { transaction: t });
@@ -198,8 +201,8 @@ export const extraccion = async (req, res) => {
             return res.status(404).json({ message: "Usuario no encontrado" });
         }
 
-        // Verificar capital suficiente
-        if (user.capitalActual < monto) {
+        if (tipo === "retiro" && user.capitalActual < monto) {
+            // Verificar capital suficiente en caso de ser retiro
             await t.rollback();
             return res.status(400).json({
                 message:
@@ -212,17 +215,75 @@ export const extraccion = async (req, res) => {
             {
                 idUser,
                 monto,
-                tipo: "retiro",
+                tipo,
                 fechaTransaccion:
                     fechaTransaccion || new Date().toISOString().split("T")[0],
-                status: "completado",
+                status: "pendiente",
             },
             { transaction: t }
         );
 
-        // Actualizar capital del usuario
-        user.capitalActual -= monto;
+        await t.commit();
+
+        // Enviar email informando la solicitud de la transacción
+        try {
+            await sendTransactionRequestEmail(
+                user.email,
+                user.name,
+                tipo,
+                monto,
+                fechaTransaccion
+            );
+        } catch (emailError) {
+            console.error("Error al enviar email:", emailError);
+            // No revertimos la transacción si falla el email
+        }
+
+        res.status(201).json({
+            message: "Solicitud de transacción creada exitosamente",
+            transaction,
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error requesting transaction" });
+    }
+};
+
+export const extraccion = async (req, res) => {
+    const t = await sequelize.transaction();
+
+    try {
+        const { idTransaction, idUser } = req.body;
+
+        const user = await User.findByPk(idUser, { transaction: t });
+        if (!user) {
+            await t.rollback();
+            return res.status(404).json({ message: "Usuario no encontrado" });
+        }
+
+        const transaction = await Transaction.findByPk(idTransaction, {
+            transaction: t,
+        });
+        if (!transaction) {
+            await t.rollback();
+            return res
+                .status(404)
+                .json({ message: "Transacción no encontrada" });
+        }
+        if (transaction.status !== "pendiente") {
+            await t.rollback();
+            return res
+                .status(400)
+                .json({ message: "La transacción esta resuelta" });
+        }
+
+        //actualizar capital del usuario
+        user.capitalActual -= transaction.monto;
         await user.save({ transaction: t });
+
+        //actualizar estado de transaccion
+        transaction.status = "completado";
+        await transaction.save({ transaction: t });
 
         // Si todo está bien, confirmar la transacción
         await t.commit();
@@ -232,9 +293,10 @@ export const extraccion = async (req, res) => {
             await sendTransactionConfirmationEmail(
                 user.email,
                 user.name,
+                "completado",
                 "retiro",
-                monto,
-                fechaTransaccion
+                transaction.monto,
+                transaction.fechaTransaccion
             );
         } catch (emailError) {
             console.error("Error al enviar email:", emailError);
@@ -242,9 +304,7 @@ export const extraccion = async (req, res) => {
         }
 
         res.status(200).json({
-            message: "Solicitud de retiro creada exitosamente",
-            transaction,
-            capitalActual: user.capitalActual,
+            message: "Solicitud de retiro resuelta exitosamente",
         });
     } catch (error) {
         await t.rollback();
@@ -260,45 +320,39 @@ export const deposito = async (req, res) => {
     const t = await sequelize.transaction();
 
     try {
-        const { idUser, monto, fechaTransaccion } = req.body;
+        const { idTransaction, idUser } = req.body;
 
-        // Buscar usuario dentro de la transacción
         const user = await User.findByPk(idUser, { transaction: t });
         if (!user) {
             await t.rollback();
             return res.status(404).json({ message: "Usuario no encontrado" });
         }
 
-        // Crear la transacción
-        const transaction = await Transaction.create(
-            {
-                idUser,
-                monto,
-                tipo: "deposito",
-                fechaTransaccion:
-                    fechaTransaccion || new Date().toISOString().split("T")[0],
-                status: "completado",
-            },
-            { transaction: t }
-        );
+        const transaction = await Transaction.findByPk(idTransaction, {
+            transaction: t,
+        });
+        if (!transaction) {
+            await t.rollback();
+            return res
+                .status(404)
+                .json({ message: "Transacción no encontrada" });
+        }
+        if (transaction.status !== "pendiente") {
+            await t.rollback();
+            return res
+                .status(400)
+                .json({ message: "La transacción esta resuelta" });
+        }
 
-        // Actualizar capital del usuario
-        user.capitalActual += monto;
+        //actualizar capital del usuario
+        user.capitalActual += transaction.monto;
         await user.save({ transaction: t });
 
-        // Crear notificación de solicitud de depósito
-        /* await createNotification(
-            {
-                idUser,
-                title: "Solicitud de depósito enviada",
-                message: `Tu solicitud de depósito por $${monto} está siendo procesada`,
-                type: "transaction",
-                priority: "medium",
-            },
-            { transaction: t }
-        ); */
+        //actualizar estado de transaccion
+        transaction.status = "completado";
+        await transaction.save({ transaction: t });
 
-        // Confirmar la transacción
+        // Si todo está bien, confirmar la transacción
         await t.commit();
 
         // Enviar email después de confirmar la transacción
@@ -306,9 +360,10 @@ export const deposito = async (req, res) => {
             await sendTransactionConfirmationEmail(
                 user.email,
                 user.name,
+                "completado",
                 "deposito",
-                monto,
-                fechaTransaccion
+                transaction.monto,
+                transaction.fechaTransaccion
             );
         } catch (emailError) {
             console.error("Error al enviar email:", emailError);
@@ -316,17 +371,75 @@ export const deposito = async (req, res) => {
         }
 
         res.status(200).json({
-            message: "Solicitud de depósito creada exitosamente",
-            transaction,
-            capitalActual: user.capitalActual,
+            message: "Solicitud de deposito resuelta exitosamente",
         });
     } catch (error) {
         await t.rollback();
         console.error("Error en deposito:", error);
         res.status(500).json({
-            message: "Error al procesar la solicitud de depósito",
+            message: "Error al procesar la solicitud de deposito",
             error: error.message,
         });
+    }
+};
+
+export const cancelTransaction = async (req, res) => {
+    const t = await sequelize.transaction();
+
+    try {
+        const { id } = req.params;
+
+        const transaction = await Transaction.findByPk(id, {
+            include: [
+                {
+                    model: User,
+                    as: "user",
+                    attributes: ["email", "name"],
+                },
+            ],
+            transaction: t,
+        });
+        if (!transaction) {
+            await t.rollback();
+            return res
+                .status(404)
+                .json({ message: "Transacción no encontrada" });
+        }
+        if (transaction.status !== "pendiente") {
+            await t.rollback();
+            return res
+                .status(400)
+                .json({ message: "La transacción esta resuelta" });
+        }
+
+        //actualizar estado de transaccion
+        transaction.status = "cancelado";
+        await transaction.save({ transaction: t });
+
+        await t.commit();
+
+        // Enviar email después de cancelar la transacción
+        try {
+            await sendTransactionConfirmationEmail(
+                transaction.user.email,
+                transaction.user.name,
+                "cancelado",
+                transaction.tipo,
+                transaction.monto,
+                transaction.fechaTransaccion
+            );
+        } catch (emailError) {
+            console.error("Error al enviar email:", emailError);
+            // No revertimos la transacción si falla el email
+        }
+
+        res.status(200).json({
+            message: "Solicitud de transacción cancelada exitosamente",
+        });
+    } catch (error) {
+        await t.rollback();
+        console.error("Error en cancelTransaction:", error);
+        res.status(500).json({ message: "Error al cancelar la transacción" });
     }
 };
 

@@ -34,7 +34,13 @@ export const formatUTCToLocal = (
 };
 
 export const formatDate = (fecha) => {
-    console.log(typeof fecha);
     const [day, month, year] = fecha.split("-");
     return `${year}/${month}/${day}`;
 };
+
+export default function formatDateCorrect(fecha) {
+    if (!fecha) return "Fecha inválida"; // Evitar valores nulos/indefinidos
+    const fechaUTC = new Date(fecha).toISOString().split("T")[0]; // Obtiene YYYY-MM-DD
+    const [year, month, day] = fechaUTC.split("-");
+    return `${day}/${month}/${year}`;
+}

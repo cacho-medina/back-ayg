@@ -86,10 +86,10 @@ export const getReports = async (req, res) => {
 
         // Configurar ordenamiento
         const order = [];
-        if (sort === "date_des") {
-            order.push(["fechaEmision", "DESC"]);
-        } else if (sort === "date_asc") {
+        if (sort === "date_asc") {
             order.push(["fechaEmision", "ASC"]);
+        } else {
+            order.push(["fechaEmision", "DESC"]);
         }
 
         // Construir objeto de filtros para el include de User

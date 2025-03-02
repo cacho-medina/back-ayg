@@ -30,9 +30,8 @@ const Transaction = sequelize.define(
             allowNull: false,
         },
         fechaTransaccion: {
-            type: DataTypes.DATE,
+            type: DataTypes.DATEONLY,
             allowNull: false,
-            defaultValue: sequelize.literal("CURRENT_TIMESTAMP"),
         },
     },
     {

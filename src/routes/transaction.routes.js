@@ -2,6 +2,7 @@ import { Router } from "express";
 import authTokenJwt from "../middleware/authTokenJwt.js";
 import authRole from "../middleware/authRole.js";
 import {
+    cancelTransaction,
     deleteTransaction,
     deposito,
     extraccion,
@@ -9,6 +10,7 @@ import {
     getTransactionByUserId,
     getTransactions,
     getTransactionStats,
+    requestTransaction,
 } from "../controllers/client.controllers.js";
 
 const router = Router();
@@ -16,21 +18,15 @@ const router = Router();
 router.get("/all", authTokenJwt, authRole(["admin"]), getTransactions);
 router.get("/:idUser", authTokenJwt, getTransactionByUserId);
 router.get("/id/:id", authTokenJwt, authRole(["admin"]), getTransactionById);
-router.post("/retiro", authTokenJwt, extraccion);
-router.post("/deposito", authTokenJwt, deposito);
-/* router.post(
-    "/confirmar-deposito/:id",
+router.patch("/retiro", authTokenJwt, authRole(["admin"]), extraccion);
+router.patch("/deposito", authTokenJwt, authRole(["admin"]), deposito);
+router.post("/new", authTokenJwt, requestTransaction);
+router.patch(
+    "/cancel/:id",
     authTokenJwt,
     authRole(["admin"]),
-    confirmDeposito
+    cancelTransaction
 );
-router.post(
-    "/confirmar-extraccion/:id",
-    authTokenJwt,
-    authRole(["admin"]),
-    confirmExtraccion
-); */
-
 router.delete(
     "/delete/:id",
     authTokenJwt,
