@@ -39,7 +39,7 @@ const User = sequelize.define(
             allowNull: false,
         },
         plan: {
-            type: DataTypes.ENUM("A", "B", "C"),
+            type: DataTypes.STRING,
             allowNull: false,
         },
         capitalInicial: {

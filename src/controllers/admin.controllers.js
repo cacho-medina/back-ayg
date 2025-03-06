@@ -121,7 +121,12 @@ export const getReports = async (req, res) => {
                 {
                     model: User,
                     as: "user",
-                    attributes: ["name", "plan", "capitalActual"],
+                    attributes: [
+                        "name",
+                        "plan",
+                        "capitalActual",
+                        "fechaRegistro",
+                    ],
                     where: userWhere,
                 },
             ],
@@ -156,7 +161,13 @@ export const getReportById = async (req, res) => {
                 {
                     model: User,
                     as: "user",
-                    attributes: ["name", "plan", "capitalActual", "currency"],
+                    attributes: [
+                        "name",
+                        "plan",
+                        "capitalActual",
+                        "currency",
+                        "fechaRegistro",
+                    ],
                 },
             ],
         });
@@ -219,7 +230,12 @@ export const getReportByUserId = async (req, res) => {
                 {
                     model: User,
                     as: "user",
-                    attributes: ["name", "plan", "capitalActual"],
+                    attributes: [
+                        "name",
+                        "plan",
+                        "capitalActual",
+                        "fechaRegistro",
+                    ],
                 },
             ],
         });
