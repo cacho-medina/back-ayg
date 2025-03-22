@@ -15,11 +15,12 @@ export const getUsers = async (req, res) => {
         // Construir objeto de filtros
         const where = {};
 
-        // Búsqueda por nombre o email
+        // Búsqueda por nombre, email o nroCliente
         if (search) {
             where[Op.or] = [
                 { name: { [Op.iLike]: `%${search}%` } },
                 { email: { [Op.iLike]: `%${search}%` } },
+                { nroCliente: { [Op.iLike]: `%${search}%` } },
             ];
         }
         if (plan) {
@@ -28,10 +29,10 @@ export const getUsers = async (req, res) => {
 
         // Configurar ordenamiento
         const order = [];
-        if (sort === "date_des") {
-            order.push(["fechaRegistro", "DESC"]);
-        } else if (sort === "date_asc") {
+        if (sort === "date_asc") {
             order.push(["fechaRegistro", "ASC"]);
+        } else {
+            order.push(["fechaRegistro", "DESC"]);
         }
 
         // Realizar la consulta con paginación y filtros

@@ -44,6 +44,11 @@ const Report = sequelize.define(
             allowNull: false,
             defaultValue: 0,
         },
+        rentaTotal: {
+            type: DataTypes.FLOAT,
+            allowNull: false,
+            defaultValue: 0,
+        },
     },
     {
         timestamps: false,

@@ -37,7 +37,7 @@ const emailTemplate = (content) => {
 export const sendResetPasswordEmail = async (email, resetToken) => {
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
     const content = `
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="max-width: 600px; margin: 0 auto;">
             <div style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden;">
                 <!-- Header -->
                 <div style="background-color: #000000; padding: 20px; text-align: center; font-family: Helvetica;">
@@ -95,9 +95,9 @@ export const sendActivateAccountEmail = async (email, name) => {
     await transporter.sendMail(mailOptions);
 };
 
-export const sendWelcomeEmail = async (email, name) => {
+export const sendWelcomeEmail = async (email, name, password) => {
     const content = `
-            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="max-width: 600px; margin: 0 auto;">
             <div style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden;">
                 <!-- Header -->
                 <div style="background-color: #000000; padding: 20px; text-align: center; font-family: Helvetica;">
@@ -114,6 +114,9 @@ export const sendWelcomeEmail = async (email, name) => {
                 <li>Consulta reportes y rendimiento de tu portafolio.</li>
                 <li>Solicita transacciones y recibe confirmaciones instantáneas.</li>
             </ul>
+            <p>Tus credenciales de acceso son:</p>
+            <p>Email: <strong>${email}</strong></p>
+            <p>Contraseña: <strong>${password}</strong></p>
             <p>Para comenzar a utilizar A&G App, por favor haz clic en el siguiente enlace:</p>
             <a href="${process.env.FRONTEND_URL}/login">Iniciar Ahora</a>
             <p>Si tienes alguna pregunta o necesitas ayuda, no dudes en contactarnos.</p>
@@ -145,7 +148,7 @@ export const sendReportEmail = async (email, name) => {
         to: email,
         subject: "📊 Tu reporte mensual está listo para revisar",
         html: `
-            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="max-width: 600px; margin: 0 auto;">
             <div style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden;">
                 <!-- Header -->
                 <div style="background-color: #000000; padding: 20px; text-align: center; font-family: Helvetica;">
@@ -189,7 +192,7 @@ export const sendTransactionRequestEmail = async (
         to: process.env.EMAIL_USER,
         subject: "⚠️ Nueva solicitud de transacción pendiente de aprobación",
         html: `
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="max-width: 600px; margin: 0 auto;">
             <div style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden;">
                 <!-- Header -->
                 <div style="background-color: #000000; padding: 20px; text-align: center; font-family: Helvetica;">
@@ -204,7 +207,7 @@ export const sendTransactionRequestEmail = async (
                     <li>Usuario: <strong>${name}</strong> (${email})</li>
                     <li>Tipo de transacción: <strong>${type}</strong></li>
                     <li>Monto: <strong>${formatNumber(amount)}</strong></li>
-                    <li>Fecha: <strong>${formatDateCorrect(date)}</strong></li>
+                    <li>Fecha: <strong>${date}</strong></li>
                 </ul>
                 <p>Para aprobar la transacción, por favor ingrese a la siguiente ruta: </p>
                 <a href="${
@@ -240,7 +243,7 @@ export const sendTransactionConfirmationEmail = async (
             status === "completado" ? "✅" : "❌"
         } Tu transacción ha sido ${status}`,
         html: `
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="max-width: 600px; margin: 0 auto;">
             <div style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden;">
                 <!-- Header -->
                 <div style="background-color: #000000; padding: 20px; text-align: center; font-family: Helvetica;">
@@ -283,7 +286,7 @@ export const sendCustomEmail = async (email, name, subject, message) => {
         to: `A&G <${process.env.EMAIL_USER}>`,
         subject: subject,
         html: `
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="max-width: 600px; margin: 0 auto;">
             <div style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden;">
                 <!-- Header -->
                 <div style="background-color: #000000; padding: 20px; text-align: center; font-family: Helvetica;">

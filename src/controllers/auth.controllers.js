@@ -7,6 +7,7 @@ import {
     sendWelcomeEmail,
 } from "../helpers/mails/sendEmail.js";
 import sequelize from "../config/db.js";
+import Report from "../models/Report.js";
 
 export const login = async (req, res) => {
     try {
@@ -48,6 +49,7 @@ export const signUpUser = async (req, res) => {
     try {
         const {
             email,
+            nroCliente,
             name,
             password,
             birthday,
@@ -58,10 +60,9 @@ export const signUpUser = async (req, res) => {
             currency,
         } = req.body;
 
-        console.log(req.body);
         // Verificar si el usuario ya existe
         const existingUser = await User.findOne({
-            where: { email },
+            where: { email, nroCliente },
             transaction: t,
         });
 
@@ -79,6 +80,7 @@ export const signUpUser = async (req, res) => {
             {
                 email,
                 name,
+                nroCliente,
                 password: hashedPassword,
                 cumpleaños: birthday,
                 role: "client",
@@ -96,7 +98,22 @@ export const signUpUser = async (req, res) => {
         );
 
         // Enviar email de bienvenida
-        await sendWelcomeEmail(email, name);
+        await sendWelcomeEmail(email, name, password);
+
+        // Crear un reporte inicial para el usuario
+        const report = await Report.create(
+            {
+                idUser: user.id,
+                fechaEmision:
+                    user.fechaRegistro ||
+                    new Date().toISOString().split("T")[0],
+                renta: 0,
+                gananciaGenerada: 0,
+                balance: user.capitalActual,
+                rentaTotal: 0,
+            },
+            { transaction: t }
+        );
 
         // Si todo sale bien, confirmar la transacción
         await t.commit();
@@ -133,6 +150,7 @@ export const signUpAdmin = async (req, res) => {
             plan,
             phone,
             currency,
+            nroCliente,
         } = req.body;
 
         // Verificar si el usuario ya existe
@@ -155,6 +173,7 @@ export const signUpAdmin = async (req, res) => {
             {
                 email,
                 name,
+                nroCliente,
                 password: hashedPassword,
                 cumpleaños,
                 role: "admin",

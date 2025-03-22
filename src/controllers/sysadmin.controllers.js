@@ -7,14 +7,21 @@ import fs from "fs";
 import { fileURLToPath } from "url";
 import { sendCustomEmail } from "../helpers/mails/sendEmail.js";
 import File from "../models/File.js";
-import MovementReport from "../models/MovementReport.js";
 import Transaction from "../models/Transaction.js";
+import calcularRenta from "../utils/calcularRenta.js";
+import calcularRentaTotal from "../utils/calcularRentaTotal.js";
+
+const obtenerMes = (fecha) => {
+    return new Intl.DateTimeFormat("es-ES", {
+        month: "short",
+        timeZone: "UTC",
+    }).format(new Date(fecha));
+};
 
 export const getEstadisticas = async (req, res) => {
     const t = await sequelize.transaction();
 
     try {
-        // 1. Obtener fechas relevantes
         const now = new Date();
         const currentYear = now.getUTCFullYear();
         const currentMonth = now.getUTCMonth();
@@ -22,90 +29,87 @@ export const getEstadisticas = async (req, res) => {
         // Calcular primer día del mes actual y del mes anterior
         const inicioMesActual = new Date(currentYear, currentMonth, 1);
         const inicioMesSiguiente = new Date(currentYear, currentMonth + 1, 1);
-
-        // Calcular primer día de hace 6 meses
-        const sixMonthsAgo = new Date(now);
-        sixMonthsAgo.setMonth(now.getMonth() - 5);
-        sixMonthsAgo.setDate(1);
-        sixMonthsAgo.setHours(0, 0, 0, 0);
-
-        // 2. Obtener balance total actual y cantidad de usuarios activos
-        const [balanceTotal, usuariosActivos] = await Promise.all([
-            User.sum("capitalActual", {
-                where: {
-                    isActive: true,
-                    isDeleted: false,
-                },
-                transaction: t,
-            }),
-            User.count({
-                where: {
-                    isActive: true,
-                    isDeleted: false,
-                },
-                transaction: t,
-            }),
-        ]);
-
-        // 3. Obtener estadísticas del último mes
-        const [reportesUltimoMes, transaccionesUltimoMes, rentaUltimoMes] =
+        //balance total, capital inicial y usuarios activos
+        const [balanceTotal, usuariosActivos, capitalInicial] =
             await Promise.all([
-                Report.count({
+                User.sum("capitalActual", {
                     where: {
-                        fechaEmision: {
-                            [Op.gte]: inicioMesActual,
-                            [Op.lt]: inicioMesSiguiente,
-                        },
+                        isActive: true,
+                        isDeleted: false,
+                        role: "client",
                     },
                     transaction: t,
                 }),
-                Transaction.findOne({
-                    attributes: [
-                        [sequelize.fn("COUNT", sequelize.col("id")), "total"],
-                        [
-                            sequelize.literal(
-                                `SUM(CASE WHEN tipo = 'deposito' THEN monto ELSE 0 END)`
-                            ),
-                            "ingresos",
-                        ],
-                        [
-                            sequelize.literal(
-                                `SUM(CASE WHEN tipo = 'retiro' THEN monto ELSE 0 END)`
-                            ),
-                            "extracciones",
-                        ],
-                    ],
+                User.count({
                     where: {
-                        fechaTransaccion: {
-                            [Op.gte]: inicioMesActual,
-                            [Op.lt]: inicioMesSiguiente,
-                        },
-                        status: "completado",
+                        isActive: true,
+                        isDeleted: false,
+                        role: "client",
                     },
                     transaction: t,
                 }),
-                Report.findOne({
-                    attributes: [
-                        [
-                            sequelize.fn("AVG", sequelize.col("renta")),
-                            "rentaPromedio",
-                        ],
-                    ],
+                User.sum("capitalInicial", {
                     where: {
-                        fechaEmision: {
-                            [Op.gte]: inicioMesActual,
-                            [Op.lt]: inicioMesSiguiente,
-                        },
+                        isActive: true,
+                        isDeleted: false,
+                        role: "client",
                     },
                     transaction: t,
                 }),
             ]);
 
-        // 4. Obtener evolución mensual del balance y rentabilidad
+        //transacciones del ultimo mes
+        const transaccionesUltimoMes = await Transaction.findOne({
+            attributes: [
+                [sequelize.fn("COUNT", sequelize.col("id")), "total"],
+                [
+                    sequelize.literal(
+                        `SUM(CASE WHEN tipo = 'deposito' THEN monto ELSE 0 END)`
+                    ),
+                    "ingresos",
+                ],
+                [
+                    sequelize.literal(
+                        `SUM(CASE WHEN tipo = 'retiro' THEN monto ELSE 0 END)`
+                    ),
+                    "extracciones",
+                ],
+            ],
+            where: {
+                fechaTransaccion: {
+                    [Op.gte]: inicioMesActual,
+                    [Op.lt]: inicioMesSiguiente,
+                },
+                status: "completado",
+            },
+            transaction: t,
+        });
+        //ganancia y reportes del ultimo mes
+        const [gananciaUltimoMes, reportesUltimoMes] = await Promise.all([
+            Report.sum("gananciaGenerada", {
+                where: {
+                    fechaEmision: {
+                        [Op.lt]: inicioMesActual,
+                    },
+                },
+                transaction: t,
+            }),
+            Report.count({
+                where: {
+                    fechaEmision: {
+                        [Op.gte]: inicioMesActual,
+                        [Op.lt]: inicioMesSiguiente,
+                    },
+                },
+                transaction: t,
+            }),
+        ]);
+
+        const reportesGenerados = await Report.count();
+
         const monthlyStats = await Report.findAll({
             where: {
                 fechaEmision: {
-                    [Op.gte]: sixMonthsAgo,
                     [Op.lt]: inicioMesSiguiente,
                 },
             },
@@ -118,8 +122,11 @@ export const getEstadisticas = async (req, res) => {
                     ),
                     "mes",
                 ],
+                [
+                    sequelize.fn("SUM", sequelize.col("gananciaGenerada")),
+                    "ganancia",
+                ],
                 [sequelize.fn("SUM", sequelize.col("balance")), "balance"],
-                [sequelize.fn("AVG", sequelize.col("renta")), "rentabilidad"],
             ],
             group: [
                 sequelize.fn(
@@ -157,33 +164,26 @@ export const getEstadisticas = async (req, res) => {
         ];
 
         const data = monthlyStats.map((stat) => ({
-            month: mesesAbreviados[new Date(stat.dataValues.mes).getMonth()],
-            balance: parseFloat(stat.dataValues.balance).toFixed(2),
-            rentabilidad: parseFloat(stat.dataValues.rentabilidad).toFixed(2),
+            fecha: obtenerMes(stat.dataValues.mes),
+            balance: parseFloat(stat.dataValues.balance),
+            ganancia: parseFloat(stat.dataValues.ganancia),
+            rentabilidad: calcularRenta(
+                stat.dataValues.ganancia,
+                capitalInicial
+            ),
         }));
 
         await t.commit();
 
         res.status(200).json({
-            balanceTotal: parseFloat(balanceTotal).toFixed(2),
-            rentaUltimoMes: parseFloat(
-                rentaUltimoMes?.dataValues?.rentaPromedio || 0
-            ).toFixed(2),
-            estadisticasMensuales: {
-                usuariosActivos,
-                reportesGenerados: reportesUltimoMes,
-                transacciones: {
-                    total: parseInt(
-                        transaccionesUltimoMes?.dataValues?.total || 0
-                    ),
-                    ingresos: parseFloat(
-                        transaccionesUltimoMes?.dataValues?.ingresos || 0
-                    ).toFixed(2),
-                    extracciones: parseFloat(
-                        transaccionesUltimoMes?.dataValues?.extracciones || 0
-                    ).toFixed(2),
-                },
+            capitalTotal: balanceTotal,
+            reportesGenerados,
+            renta: calcularRenta(gananciaUltimoMes, capitalInicial),
+            dataMensual: {
+                reportes: reportesUltimoMes,
+                transacciones: transaccionesUltimoMes,
             },
+            usuariosActivos,
             data,
         });
     } catch (error) {
@@ -197,114 +197,45 @@ export const getEstadisticas = async (req, res) => {
 };
 
 export const getEstadisticasByUser = async (req, res) => {
-    const t = await sequelize.transaction();
     try {
         const { idUser } = req.params;
-
-        // Verificar que el usuario existe
-        const user = await User.findByPk(idUser, { transaction: t });
+        const user = await User.findByPk(idUser);
         if (!user) {
-            await t.rollback();
-            return res.status(404).json({ message: "Usuario no encontrado" });
+            return res.status(404).json({
+                message: "No existe el usuario",
+            });
         }
 
-        // Obtener fecha actual y calcular fecha de inicio (6 meses atrás)
-        const now = new Date();
-        const sixMonthsAgo = new Date(now);
-        sixMonthsAgo.setMonth(now.getMonth() - 5);
-        sixMonthsAgo.setDate(1);
-
-        // Obtener todos los reportes del usuario en los últimos 6 meses
-        const monthlyReports = await Report.findAll({
+        const reports = await Report.findAll({
             where: {
                 idUser,
-                fechaEmision: {
-                    [Op.gte]: sixMonthsAgo,
-                    [Op.lt]: new Date(now.getFullYear(), now.getMonth() + 1, 1),
-                },
             },
             attributes: [
-                [
-                    sequelize.fn(
-                        "date_trunc",
-                        "month",
-                        sequelize.col("fechaEmision")
-                    ),
-                    "mes",
-                ],
-                [sequelize.fn("AVG", sequelize.col("renta")), "rentabilidad"],
-                [sequelize.fn("MAX", sequelize.col("balance")), "balance"],
+                "fechaEmision",
+                "renta",
+                "gananciaGenerada",
+                "balance",
             ],
-            group: [
-                sequelize.fn(
-                    "date_trunc",
-                    "month",
-                    sequelize.col("fechaEmision")
-                ),
-            ],
-            order: [
-                [
-                    sequelize.fn(
-                        "date_trunc",
-                        "month",
-                        sequelize.col("fechaEmision")
-                    ),
-                    "ASC",
-                ],
-            ],
-            transaction: t,
+            order: [["fechaEmision", "ASC"]],
         });
-
-        // Mapear los meses a formato español abreviado
-        const mesesAbreviados = [
-            "Ene",
-            "Feb",
-            "Mar",
-            "Abr",
-            "May",
-            "Jun",
-            "Jul",
-            "Ago",
-            "Sep",
-            "Oct",
-            "Nov",
-            "Dic",
-        ];
-
-        const data = monthlyReports.map((report) => ({
-            month: mesesAbreviados[new Date(report.dataValues.mes).getMonth()],
-            balance: parseFloat(report.dataValues.balance).toFixed(2),
-            rentabilidad: parseFloat(report.dataValues.rentabilidad).toFixed(2),
-        }));
-
-        // Calcular estadísticas generales
-        const rendimientoPromedio =
-            data.reduce((acc, curr) => acc + parseFloat(curr.rentabilidad), 0) /
-            data.length;
-
-        const balanceInicial = parseFloat(
-            data[0]?.balance || user.capitalInicial
-        );
-        const balanceActual = parseFloat(
-            data[data.length - 1]?.balance || user.capitalActual
-        );
-
-        await t.commit();
 
         res.status(200).json({
-            plan: user.plan,
-            estadisticasGenerales: {
-                rendimientoPromedio: rendimientoPromedio.toFixed(2),
-                balanceInicial: balanceInicial.toFixed(2),
-                balanceActual: balanceActual.toFixed(2),
-            },
-            data,
+            montoTotal: user.capitalActual,
+            dataMensual: reports.map((report) => ({
+                fecha: report.fechaEmision,
+                mes: obtenerMes(report.fechaEmision),
+                renta: report.renta,
+                ganancia: report.gananciaGenerada,
+                balance: report.balance,
+            })),
+            rentaTotal: calcularRentaTotal(
+                reports.map((report) => report.renta)
+            ),
         });
     } catch (error) {
-        await t.rollback();
         console.error("Error en getEstadisticasByUser:", error);
         res.status(500).json({
-            message: "Error al obtener estadísticas del usuario",
+            message: "Error al obtener estadísticas por usuario",
             error: error.message,
         });
     }
@@ -357,7 +288,7 @@ export const uploadFile = async (req, res) => {
     const t = await sequelize.transaction();
 
     try {
-        const { titulo, descripcion, proposito, idUser } = req.body;
+        const { titulo, proposito, idUser } = req.body;
         if (!req.file) {
             return res.status(400).json({
                 message: "No se ha subido ningún archivo",
@@ -385,7 +316,7 @@ export const uploadFile = async (req, res) => {
                 size: req.file.size,
                 type: proposito,
                 titulo: titulo || null,
-                descripcion: descripcion || null,
+                link: `/uploads/${req.file.filename}`,
             },
             { transaction: t }
         );

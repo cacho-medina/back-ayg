@@ -4,6 +4,7 @@ import "../models/relations.js";
 import { sendReportEmail } from "../helpers/mails/sendEmail.js";
 import sequelize from "../config/db.js";
 import { Op } from "sequelize";
+import calcularRentaTotal from "../utils/calcularRentaTotal.js";
 
 export const getClients = async (req, res) => {
     try {
@@ -126,6 +127,8 @@ export const getReports = async (req, res) => {
                         "plan",
                         "capitalActual",
                         "fechaRegistro",
+                        "currency",
+                        "nroCliente",
                     ],
                     where: userWhere,
                 },
@@ -167,6 +170,7 @@ export const getReportById = async (req, res) => {
                         "capitalActual",
                         "currency",
                         "fechaRegistro",
+                        "nroCliente",
                     ],
                 },
             ],
@@ -200,10 +204,10 @@ export const getReportByUserId = async (req, res) => {
 
         // Configurar ordenamiento
         const order = [];
-        if (sort === "date_des") {
-            order.push(["fechaEmision", "DESC"]);
-        } else if (sort === "date_asc") {
+        if (sort === "date_asc") {
             order.push(["fechaEmision", "ASC"]);
+        } else {
+            order.push(["fechaEmision", "DESC"]);
         }
 
         // Filtro por rango de fechas
@@ -235,6 +239,8 @@ export const getReportByUserId = async (req, res) => {
                         "plan",
                         "capitalActual",
                         "fechaRegistro",
+                        "currency",
+                        "nroCliente",
                     ],
                 },
             ],
@@ -285,6 +291,7 @@ export const createReport = async (req, res) => {
                     fechaEmision || new Date().toISOString().split("T")[0],
                 extraccion,
                 balance: user.capitalActual,
+                rentaTotal: calcularRentaTotal([user.rentaTotal, renta]),
             },
             { transaction: t }
         );

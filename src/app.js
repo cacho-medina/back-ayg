@@ -14,6 +14,7 @@ import UserRoutes from "./routes/user.routes.js";
 import SysadminRoutes from "./routes/sysadmin.routes.js";
 import MovementRoutes from "./routes/movement.routes.js";
 import MovementReportRoutes from "./routes/movementReport.routes.js";
+import PostsRoutes from "./routes/posts.routes.js";
 
 const app = express();
 
@@ -46,4 +47,5 @@ app.use(
     MovementReportRoutes
 );
 app.use(`${process.env.API_VERSION}/admin`, SysadminRoutes);
+app.use(`${process.env.API_VERSION}/posts`, PostsRoutes);
 export default app;

@@ -42,7 +42,7 @@ const File = sequelize.define(
             type: DataTypes.STRING,
             allowNull: true,
         },
-        descripcion: {
+        link: {
             type: DataTypes.STRING,
             allowNull: true,
         },
