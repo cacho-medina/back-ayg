@@ -287,8 +287,7 @@ export const createReport = async (req, res) => {
                 idUser,
                 renta,
                 gananciaGenerada,
-                fechaEmision:
-                    fechaEmision || new Date().toISOString().split("T")[0],
+                fechaEmision,
                 extraccion,
                 balance: user.capitalActual,
                 rentaTotal: calcularRentaTotal([user.rentaTotal, renta]),

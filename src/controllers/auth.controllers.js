@@ -89,8 +89,7 @@ export const signUpUser = async (req, res) => {
                 isDeleted: false,
                 capitalActual: capitalInicial,
                 plan,
-                fechaRegistro:
-                    fechaRegistro || new Date().toISOString().split("T")[0],
+                fechaRegistro,
                 phone,
                 currency,
             },

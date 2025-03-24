@@ -216,8 +216,7 @@ export const requestTransaction = async (req, res) => {
                 idUser,
                 monto,
                 tipo,
-                fechaTransaccion:
-                    fechaTransaccion || new Date().toISOString().split("T")[0],
+                fechaTransaccion,
                 status: "pendiente",
             },
             { transaction: t }
