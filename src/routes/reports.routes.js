@@ -12,7 +12,7 @@ import {
 const router = Router();
 
 router.get("/all", authTokenJwt, authRole(["admin"]), getReports);
-router.get("/:idUser/all", authTokenJwt, getReportByUserId);
+router.get("/:idPlan/all", authTokenJwt, getReportByUserId);
 router.get("/id/:id", authTokenJwt, getReportById);
 router.post("/create", authTokenJwt, authRole(["admin"]), createReport);
 router.delete("/delete/:id", authTokenJwt, authRole(["admin"]), deleteReport);

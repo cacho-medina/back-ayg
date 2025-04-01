@@ -21,26 +21,10 @@ const File = sequelize.define(
             type: DataTypes.STRING,
             allowNull: false,
         },
-        path: {
-            type: DataTypes.STRING,
-            allowNull: false,
-        },
         type: {
             type: DataTypes.STRING,
             allowNull: false,
             defaultValue: "general",
-        },
-        size: {
-            type: DataTypes.FLOAT,
-            allowNull: false,
-        },
-        originalName: {
-            type: DataTypes.STRING,
-            allowNull: false,
-        },
-        titulo: {
-            type: DataTypes.STRING,
-            allowNull: true,
         },
         link: {
             type: DataTypes.STRING,

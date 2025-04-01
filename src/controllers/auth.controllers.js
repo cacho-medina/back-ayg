@@ -1,4 +1,5 @@
 import User from "../models/User.js";
+import Plan from "../models/Plan.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import generateJwt from "../helpers/jwt/generateJwt.js";
@@ -27,15 +28,15 @@ export const login = async (req, res) => {
         if (!user.isActive) {
             return res.status(401).json({ message: "usuario suspendido" });
         }
-        if (user.isDeleted) {
-            return res.status(401).json({ message: "usuario eliminado" });
-        }
         const token = generateJwt(user.id, user.email, user.role);
+
+        const plan = await Plan.findOne({ where: { idUser: user.id } });
 
         res.status(200).json({
             message: "Login successful",
             token,
             user,
+            plan,
         });
     } catch (error) {
         console.log(error);
@@ -48,16 +49,16 @@ export const signUpUser = async (req, res) => {
 
     try {
         const {
-            email,
             nroCliente,
-            name,
+            email,
             password,
-            birthday,
-            capitalInicial,
-            plan,
-            fechaRegistro,
             phone,
+            name,
+            cumpleaños,
+            fechaRegistro,
+            plan,
             currency,
+            capitalInicial,
         } = req.body;
 
         // Verificar si el usuario ya existe
@@ -82,16 +83,25 @@ export const signUpUser = async (req, res) => {
                 name,
                 nroCliente,
                 password: hashedPassword,
-                cumpleaños: birthday,
+                cumpleaños,
                 role: "client",
-                capitalInicial,
                 isActive: true,
-                isDeleted: false,
-                capitalActual: capitalInicial,
-                plan,
                 fechaRegistro,
                 phone,
+            },
+            { transaction: t }
+        );
+
+        // Asociar un plan inicial con el usuario
+        const cuenta = await Plan.create(
+            {
+                idUser: user.id,
+                periodo: plan,
                 currency,
+                capitalInicial,
+                capitalActual: capitalInicial,
+                fechaInicio: fechaRegistro,
+                isCurrent: true,
             },
             { transaction: t }
         );
@@ -102,14 +112,17 @@ export const signUpUser = async (req, res) => {
         // Crear un reporte inicial para el usuario
         const report = await Report.create(
             {
-                idUser: user.id,
-                fechaEmision:
-                    user.fechaRegistro ||
-                    new Date().toISOString().split("T")[0],
+                idPlan: cuenta.id,
+                montoInicial: cuenta.capitalInicial,
                 renta: 0,
-                gananciaGenerada: 0,
-                balance: user.capitalActual,
-                rentaTotal: 0,
+                ganancia: 0,
+                fechaEmision: fechaRegistro,
+                crecimiento: 0,
+                rentabilidadTotal: 0,
+                capitalFinal: cuenta.capitalInicial,
+                extraccion: 0,
+                deposito: 0,
+                nroReporte: 0,
             },
             { transaction: t }
         );
@@ -140,17 +153,8 @@ export const signUpAdmin = async (req, res) => {
     const t = await sequelize.transaction();
 
     try {
-        const {
-            email,
-            name,
-            password,
-            cumpleaños,
-            capitalInicial,
-            plan,
-            phone,
-            currency,
-            nroCliente,
-        } = req.body;
+        const { email, name, password, cumpleaños, phone, nroCliente } =
+            req.body;
 
         // Verificar si el usuario ya existe
         const existingUser = await User.findOne({
@@ -176,21 +180,24 @@ export const signUpAdmin = async (req, res) => {
                 password: hashedPassword,
                 cumpleaños,
                 role: "admin",
-                capitalInicial: capitalInicial || 0,
                 isActive: true,
-                isDeleted: false,
-                capitalActual: capitalInicial || 0,
-                plan: plan || "A",
-                fechaRegistro: new Date().toISOString().split("T")[0],
                 phone,
-                currency,
+                fechaRegistro: new Date()
+                    .toLocaleDateString("es-AR", {
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                    })
+                    .split("/")
+                    .reverse()
+                    .join("-"),
             },
             { transaction: t }
         );
 
         try {
             // Enviar email de bienvenida
-            await sendWelcomeEmail(email, name);
+            await sendWelcomeEmail(email, name, password);
         } catch (emailError) {
             // Log del error pero continuamos con la transacción
             console.error("Error enviando email de bienvenida:", emailError);
@@ -207,7 +214,6 @@ export const signUpAdmin = async (req, res) => {
                 name: user.name,
                 role: user.role,
                 phone: user.phone,
-                currency: user.currency,
             },
         });
     } catch (error) {

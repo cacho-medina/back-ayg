@@ -7,9 +7,11 @@ import fs from "fs";
 import { fileURLToPath } from "url";
 import { sendCustomEmail } from "../helpers/mails/sendEmail.js";
 import File from "../models/File.js";
+import Plan from "../models/Plan.js";
 import Transaction from "../models/Transaction.js";
 import calcularRenta from "../utils/calcularRenta.js";
 import calcularRentaTotal from "../utils/calcularRentaTotal.js";
+import { calcularCrecimiento } from "../utils/calcularCrecimiento.js";
 
 const obtenerMes = (fecha) => {
     return new Intl.DateTimeFormat("es-ES", {
@@ -32,27 +34,22 @@ export const getEstadisticas = async (req, res) => {
         //balance total, capital inicial y usuarios activos
         const [balanceTotal, usuariosActivos, capitalInicial] =
             await Promise.all([
-                User.sum("capitalActual", {
+                Plan.sum("capitalActual", {
                     where: {
-                        isActive: true,
-                        isDeleted: false,
-                        role: "client",
+                        isCurrent: true,
                     },
                     transaction: t,
                 }),
                 User.count({
                     where: {
                         isActive: true,
-                        isDeleted: false,
                         role: "client",
                     },
                     transaction: t,
                 }),
-                User.sum("capitalInicial", {
+                Plan.sum("capitalInicial", {
                     where: {
-                        isActive: true,
-                        isDeleted: false,
-                        role: "client",
+                        isCurrent: true,
                     },
                     transaction: t,
                 }),
@@ -85,25 +82,34 @@ export const getEstadisticas = async (req, res) => {
             transaction: t,
         });
         //ganancia y reportes del ultimo mes
-        const [gananciaUltimoMes, reportesUltimoMes] = await Promise.all([
-            Report.sum("gananciaGenerada", {
-                where: {
-                    fechaEmision: {
-                        [Op.lt]: inicioMesActual,
+        const [gananciaUltimoMes, reportesUltimoMes, capitalInicialUltimoMes] =
+            await Promise.all([
+                Report.sum("ganancia", {
+                    where: {
+                        fechaEmision: {
+                            [Op.lt]: inicioMesActual,
+                        },
                     },
-                },
-                transaction: t,
-            }),
-            Report.count({
-                where: {
-                    fechaEmision: {
-                        [Op.gte]: inicioMesActual,
-                        [Op.lt]: inicioMesSiguiente,
+                    transaction: t,
+                }),
+                Report.count({
+                    where: {
+                        fechaEmision: {
+                            [Op.gte]: inicioMesActual,
+                            [Op.lt]: inicioMesSiguiente,
+                        },
                     },
-                },
-                transaction: t,
-            }),
-        ]);
+                    transaction: t,
+                }),
+                Report.sum("montoInicial", {
+                    where: {
+                        fechaEmision: {
+                            [Op.lt]: inicioMesActual,
+                        },
+                    },
+                    transaction: t,
+                }),
+            ]);
 
         const reportesGenerados = await Report.count();
 
@@ -122,11 +128,8 @@ export const getEstadisticas = async (req, res) => {
                     ),
                     "mes",
                 ],
-                [
-                    sequelize.fn("SUM", sequelize.col("gananciaGenerada")),
-                    "ganancia",
-                ],
-                [sequelize.fn("SUM", sequelize.col("balance")), "balance"],
+                [sequelize.fn("SUM", sequelize.col("ganancia")), "ganancia"],
+                [sequelize.fn("SUM", sequelize.col("capitalFinal")), "balance"],
             ],
             group: [
                 sequelize.fn(
@@ -178,7 +181,11 @@ export const getEstadisticas = async (req, res) => {
         res.status(200).json({
             capitalTotal: balanceTotal,
             reportesGenerados,
-            renta: calcularRenta(gananciaUltimoMes, capitalInicial),
+            renta: calcularRenta(gananciaUltimoMes, capitalInicialUltimoMes),
+            crecimiento: calcularCrecimiento(
+                balanceTotal,
+                capitalInicial
+            ).toFixed(2),
             dataMensual: {
                 reportes: reportesUltimoMes,
                 transacciones: transaccionesUltimoMes,
@@ -199,38 +206,41 @@ export const getEstadisticas = async (req, res) => {
 export const getEstadisticasByUser = async (req, res) => {
     try {
         const { idUser } = req.params;
-        const user = await User.findByPk(idUser);
-        if (!user) {
+        const plan = await Plan.findOne({ where: { idUser } });
+        if (!plan) {
             return res.status(404).json({
-                message: "No existe el usuario",
+                message: "No existe el plan",
             });
         }
 
         const reports = await Report.findAll({
             where: {
-                idUser,
+                idPlan: plan.id,
             },
-            attributes: [
-                "fechaEmision",
-                "renta",
-                "gananciaGenerada",
-                "balance",
-            ],
+            attributes: ["fechaEmision", "renta", "ganancia", "capitalFinal"],
             order: [["fechaEmision", "ASC"]],
         });
 
+        const gananciaAcumulada = reports.reduce(
+            (acumulado, report) => acumulado + report.ganancia,
+            0
+        );
+
+        const rentaTotal = calcularRenta(
+            gananciaAcumulada,
+            plan.capitalInicial
+        );
+
         res.status(200).json({
-            montoTotal: user.capitalActual,
+            montoTotal: plan.capitalActual,
             dataMensual: reports.map((report) => ({
                 fecha: report.fechaEmision,
                 mes: obtenerMes(report.fechaEmision),
-                renta: report.renta,
-                ganancia: report.gananciaGenerada,
-                balance: report.balance,
+                renta: report.renta.toFixed(2),
+                ganancia: report.ganancia,
+                balance: report.capitalFinal,
             })),
-            rentaTotal: calcularRentaTotal(
-                reports.map((report) => report.renta)
-            ),
+            rentaTotal: rentaTotal.toFixed(2),
         });
     } catch (error) {
         console.error("Error en getEstadisticasByUser:", error);
@@ -310,13 +320,9 @@ export const uploadFile = async (req, res) => {
         const file = await File.create(
             {
                 idUser: idUser || null,
-                name: req.file.filename,
-                originalName: req.file.originalname,
-                path: req.file.path,
-                size: req.file.size,
+                name: titulo || req.file.filename,
                 type: proposito,
-                titulo: titulo || null,
-                link: `/uploads/${req.file.filename}`,
+                link: `${process.env.BACKEND_URL}/uploads/${titulo}`,
             },
             { transaction: t }
         );

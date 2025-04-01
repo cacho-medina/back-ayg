@@ -1,3 +1,4 @@
+import Plan from "../models/Plan.js";
 import User from "../models/User.js";
 import { Op } from "sequelize";
 
@@ -43,6 +44,17 @@ export const getUsers = async (req, res) => {
             offset,
             attributes: {
                 exclude: ["password"], // Excluir el campo password de la respuesta
+                include: [
+                    {
+                        model: Plan,
+                        attributes: [
+                            "periodo",
+                            "capitalInicial",
+                            "isCurrent",
+                            "currency",
+                        ],
+                    },
+                ],
             },
         });
 
@@ -74,8 +86,14 @@ export const getUserByName = async (req, res) => {
             where: {
                 name: { [Op.iLike]: `%${req.params.name}%` },
                 isActive: true,
-                isDeleted: false,
             },
+            include: [
+                {
+                    model: Plan,
+                    as: "plans",
+                    attributes: ["periodo", "capitalInicial", "isCurrent"],
+                },
+            ],
         });
         if (!user) {
             return res.status(404).json({ message: "Usuario no encontrado" });
@@ -89,7 +107,23 @@ export const getUserByName = async (req, res) => {
 
 export const getUserById = async (req, res) => {
     try {
-        const user = await User.findByPk(req.params.id);
+        const user = await User.findByPk(req.params.id, {
+            include: [
+                {
+                    model: Plan,
+                    as: "plans",
+                    attributes: [
+                        "id",
+                        "periodo",
+                        "capitalInicial",
+                        "isCurrent",
+                        "capitalActual",
+                        "fechaInicio",
+                        "currency",
+                    ],
+                },
+            ],
+        });
         res.status(200).json(user);
     } catch (error) {
         console.error(error);
@@ -104,8 +138,8 @@ export const updateUser = async (req, res) => {
         if (!user) {
             return res.status(404).json({ message: "Usuario no encontrado" });
         }
-        if (user.isDeleted) {
-            return res.status(400).json({ message: "Usuario ya eliminado" });
+        if (!user.isActive) {
+            return res.status(400).json({ message: "Usuario inactivo" });
         }
         await user.update({
             name: name || user.name,
@@ -127,12 +161,10 @@ export const deleteUser = async (req, res) => {
         if (!user) {
             return res.status(404).json({ message: "Usuario no encontrado" });
         }
-        if (user.isDeleted) {
-            return res.status(400).json({ message: "Usuario ya eliminado" });
+        if (user.isActive) {
+            return res.status(400).json({ message: "Usuario activo" });
         }
-        user.isDeleted = true;
-        user.isActive = false;
-        await user.save();
+        await user.destroy();
         res.status(200).json({ message: "Usuario eliminado correctamente" });
     } catch (error) {
         console.error(error);
@@ -145,12 +177,9 @@ export const activateUser = async (req, res) => {
         if (!user) {
             return res.status(404).json({ message: "Usuario no encontrado" });
         }
-        if (!user.isDeleted) {
-            return res
-                .status(400)
-                .json({ message: "Usuario no está eliminado" });
+        if (user.isActive) {
+            return res.status(400).json({ message: "Usuario ya está activo" });
         }
-        user.isDeleted = false;
         user.isActive = true;
         await user.save();
         res.status(200).json({ message: "Usuario activado correctamente" });
@@ -169,8 +198,8 @@ export const changeUserStatus = async (req, res) => {
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
-        if (user.isDeleted) {
-            return res.status(400).json({ message: "User is deleted" });
+        if (!user.isActive) {
+            return res.status(400).json({ message: "User is inactive" });
         }
         if (user.isActive === isActive) {
             return res.status(400).json({

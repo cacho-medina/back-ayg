@@ -12,8 +12,6 @@ import ReportsRoutes from "./routes/reports.routes.js";
 import TransactionsRoutes from "./routes/transaction.routes.js";
 import UserRoutes from "./routes/user.routes.js";
 import SysadminRoutes from "./routes/sysadmin.routes.js";
-import MovementRoutes from "./routes/movement.routes.js";
-import MovementReportRoutes from "./routes/movementReport.routes.js";
 import PostsRoutes from "./routes/posts.routes.js";
 
 const app = express();
@@ -41,11 +39,6 @@ app.use(`${process.env.API_VERSION}/auth`, AuthRoutes);
 app.use(`${process.env.API_VERSION}/user`, UserRoutes);
 app.use(`${process.env.API_VERSION}/user/reports`, ReportsRoutes);
 app.use(`${process.env.API_VERSION}/user/transactions`, TransactionsRoutes);
-app.use(`${process.env.API_VERSION}/user/movements`, MovementRoutes);
-app.use(
-    `${process.env.API_VERSION}/user/movements/report`,
-    MovementReportRoutes
-);
 app.use(`${process.env.API_VERSION}/admin`, SysadminRoutes);
 app.use(`${process.env.API_VERSION}/posts`, PostsRoutes);
 export default app;

@@ -9,25 +9,17 @@ const Report = sequelize.define(
             defaultValue: DataTypes.UUIDV4,
             primaryKey: true,
         },
-        idUser: {
-            type: DataTypes.UUID, // Clave foránea que referencia User
-            allowNull: false,
-            references: {
-                model: "Users", // Nombre de la tabla de User
-                key: "id", // Columna referenciada en User
-            },
-        },
         renta: {
-            //representa la rentabilidad mensual de la inversion en porcentaje
             type: DataTypes.FLOAT,
             allowNull: false,
-            defaultValue: 0,
         },
-        gananciaGenerada: {
-            //representa la ganancia generada mensual por la inversion
+        montoInicial: {
             type: DataTypes.DOUBLE,
             allowNull: false,
-            defaultValue: 0,
+        },
+        ganancia: {
+            type: DataTypes.DOUBLE,
+            allowNull: false,
         },
         fechaEmision: {
             type: DataTypes.DATEONLY,
@@ -39,15 +31,34 @@ const Report = sequelize.define(
             allowNull: false,
             defaultValue: 0,
         },
-        balance: {
+        deposito: {
             type: DataTypes.DOUBLE,
             allowNull: false,
             defaultValue: 0,
         },
-        rentaTotal: {
+        capitalFinal: {
+            type: DataTypes.DOUBLE,
+            allowNull: false,
+        },
+        rentabilidadTotal: {
             type: DataTypes.FLOAT,
             allowNull: false,
-            defaultValue: 0,
+        },
+        nroReporte: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+        },
+        crecimiento: {
+            type: DataTypes.FLOAT,
+            allowNull: false,
+        },
+        idPlan: {
+            type: DataTypes.UUID,
+            allowNull: false,
+            references: {
+                model: "Plans",
+                key: "id",
+            },
         },
     },
     {

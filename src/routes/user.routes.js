@@ -19,7 +19,7 @@ router.get("/nombre/:name", authTokenJwt, getUserByName);
 router.get("/clients", authTokenJwt, authRole(["admin"]), getClients);
 router.get("/:id", authTokenJwt, getUserById);
 router.patch("/update/:id", authTokenJwt, updateUser);
-router.patch("/delete/:id", authTokenJwt, authRole(["admin"]), deleteUser);
+router.delete("/delete/:id", authTokenJwt, authRole(["admin"]), deleteUser);
 router.patch("/activate/:id", authTokenJwt, authRole(["admin"]), activateUser);
 router.patch(
     "/update/status/:id",

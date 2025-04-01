@@ -9,14 +9,13 @@ import {
     getTransactionById,
     getTransactionByUserId,
     getTransactions,
-    getTransactionStats,
     requestTransaction,
 } from "../controllers/client.controllers.js";
 
 const router = Router();
 
 router.get("/all", authTokenJwt, authRole(["admin"]), getTransactions);
-router.get("/:idUser", authTokenJwt, getTransactionByUserId);
+router.get("/:idPlan", authTokenJwt, getTransactionByUserId);
 router.get("/id/:id", authTokenJwt, authRole(["admin"]), getTransactionById);
 router.patch("/retiro", authTokenJwt, authRole(["admin"]), extraccion);
 router.patch("/deposito", authTokenJwt, authRole(["admin"]), deposito);
@@ -33,7 +32,5 @@ router.delete(
     authRole(["admin"]),
     deleteTransaction
 );
-
-router.get("/stats/:idUser", authTokenJwt, getTransactionStats);
 
 export default router;

@@ -6,6 +6,7 @@ import {
 } from "../helpers/mails/sendEmail.js";
 import sequelize from "../config/db.js";
 import { Op } from "sequelize";
+import Plan from "../models/Plan.js";
 
 export const getTransactions = async (req, res) => {
     try {
@@ -68,9 +69,16 @@ export const getTransactions = async (req, res) => {
                 offset,
                 include: [
                     {
-                        model: User,
-                        as: "user",
-                        attributes: ["name", "plan", "capitalActual", "email"],
+                        model: Plan,
+                        as: "plan",
+                        attributes: ["id", "periodo"],
+                        include: [
+                            {
+                                model: User,
+                                as: "user",
+                                attributes: ["id", "name", "nroCliente"],
+                            },
+                        ],
                     },
                 ],
             }
@@ -103,9 +111,16 @@ export const getTransactionById = async (req, res) => {
         const transaction = await Transaction.findByPk(req.params.id, {
             include: [
                 {
-                    model: User,
-                    as: "user",
-                    attributes: ["name", "plan", "capitalActual"],
+                    model: Plan,
+                    as: "plan",
+                    attributes: ["id", "periodo"],
+                    include: [
+                        {
+                            model: User,
+                            as: "user",
+                            attributes: ["id", "name", "nroCliente"],
+                        },
+                    ],
                 },
             ],
         });
@@ -128,7 +143,7 @@ export const getTransactionByUserId = async (req, res) => {
         const offset = (page - 1) * limit;
 
         const where = {
-            idUser: req.params.idUser,
+            idPlan: req.params.idPlan,
         };
 
         // Filtro por rango de fechas
@@ -159,9 +174,16 @@ export const getTransactionByUserId = async (req, res) => {
                 order,
                 include: [
                     {
-                        model: User,
-                        as: "user",
-                        attributes: ["name", "plan", "capitalActual"],
+                        model: Plan,
+                        as: "plan",
+                        attributes: ["id", "periodo"],
+                        include: [
+                            {
+                                model: User,
+                                as: "user",
+                                attributes: ["id", "name", "nroCliente"],
+                            },
+                        ],
                     },
                 ],
                 limit,
@@ -190,18 +212,27 @@ export const getTransactionByUserId = async (req, res) => {
 
 export const requestTransaction = async (req, res) => {
     try {
-        const { idUser, monto, tipo, fechaTransaccion } = req.body;
+        const { idPlan, monto, tipo, fechaTransaccion, currency } = req.body;
 
         const t = await sequelize.transaction();
 
         // Buscar usuario dentro de la transacción
-        const user = await User.findByPk(idUser, { transaction: t });
-        if (!user) {
+        const plan = await Plan.findByPk(idPlan, {
+            include: [
+                {
+                    model: User,
+                    as: "user",
+                    attributes: ["id", "name", "nroCliente", "email"],
+                },
+            ],
+            transaction: t,
+        });
+        if (!plan) {
             await t.rollback();
-            return res.status(404).json({ message: "Usuario no encontrado" });
+            return res.status(404).json({ message: "Plan no encontrado" });
         }
 
-        if (tipo === "retiro" && user.capitalActual < monto) {
+        if (tipo === "retiro" && plan.capitalActual < monto) {
             // Verificar capital suficiente en caso de ser retiro
             await t.rollback();
             return res.status(400).json({
@@ -213,10 +244,11 @@ export const requestTransaction = async (req, res) => {
         // Crear la transacción
         const transaction = await Transaction.create(
             {
-                idUser,
+                idPlan,
                 monto,
                 tipo,
                 fechaTransaccion,
+                currency: currency || plan.currency,
                 status: "pendiente",
             },
             { transaction: t }
@@ -227,11 +259,12 @@ export const requestTransaction = async (req, res) => {
         // Enviar email informando la solicitud de la transacción
         try {
             await sendTransactionRequestEmail(
-                user.email,
-                user.name,
+                plan.user.email,
+                plan.user.name,
                 tipo,
                 monto,
-                fechaTransaccion
+                fechaTransaccion,
+                currency
             );
         } catch (emailError) {
             console.error("Error al enviar email:", emailError);
@@ -252,12 +285,21 @@ export const extraccion = async (req, res) => {
     const t = await sequelize.transaction();
 
     try {
-        const { idTransaction, idUser } = req.body;
+        const { idTransaction, idPlan } = req.body;
 
-        const user = await User.findByPk(idUser, { transaction: t });
-        if (!user) {
+        const plan = await Plan.findByPk(idPlan, {
+            include: [
+                {
+                    model: User,
+                    as: "user",
+                    attributes: ["id", "name", "email"],
+                },
+            ],
+            transaction: t,
+        });
+        if (!plan) {
             await t.rollback();
-            return res.status(404).json({ message: "Usuario no encontrado" });
+            return res.status(404).json({ message: "Plan no encontrado" });
         }
 
         const transaction = await Transaction.findByPk(idTransaction, {
@@ -277,8 +319,8 @@ export const extraccion = async (req, res) => {
         }
 
         //actualizar capital del usuario
-        user.capitalActual -= transaction.monto;
-        await user.save({ transaction: t });
+        plan.capitalActual -= transaction.monto;
+        await plan.save({ transaction: t });
 
         //actualizar estado de transaccion
         transaction.status = "completado";
@@ -290,8 +332,8 @@ export const extraccion = async (req, res) => {
         // Enviar email después de confirmar la transacción
         try {
             await sendTransactionConfirmationEmail(
-                user.email,
-                user.name,
+                plan.user.email,
+                plan.user.name,
                 "completado",
                 "retiro",
                 transaction.monto,
@@ -319,12 +361,21 @@ export const deposito = async (req, res) => {
     const t = await sequelize.transaction();
 
     try {
-        const { idTransaction, idUser } = req.body;
+        const { idTransaction, idPlan } = req.body;
 
-        const user = await User.findByPk(idUser, { transaction: t });
-        if (!user) {
+        const plan = await Plan.findByPk(idPlan, {
+            include: [
+                {
+                    model: User,
+                    as: "user",
+                    attributes: ["id", "name", "email"],
+                },
+            ],
+            transaction: t,
+        });
+        if (!plan) {
             await t.rollback();
-            return res.status(404).json({ message: "Usuario no encontrado" });
+            return res.status(404).json({ message: "Plan no encontrado" });
         }
 
         const transaction = await Transaction.findByPk(idTransaction, {
@@ -344,8 +395,8 @@ export const deposito = async (req, res) => {
         }
 
         //actualizar capital del usuario
-        user.capitalActual += transaction.monto;
-        await user.save({ transaction: t });
+        plan.capitalActual += transaction.monto;
+        await plan.save({ transaction: t });
 
         //actualizar estado de transaccion
         transaction.status = "completado";
@@ -357,8 +408,8 @@ export const deposito = async (req, res) => {
         // Enviar email después de confirmar la transacción
         try {
             await sendTransactionConfirmationEmail(
-                user.email,
-                user.name,
+                plan.user.email,
+                plan.user.name,
                 "completado",
                 "deposito",
                 transaction.monto,
@@ -391,9 +442,16 @@ export const cancelTransaction = async (req, res) => {
         const transaction = await Transaction.findByPk(id, {
             include: [
                 {
-                    model: User,
-                    as: "user",
-                    attributes: ["email", "name"],
+                    model: Plan,
+                    as: "plan",
+                    attributes: ["id"],
+                    include: [
+                        {
+                            model: User,
+                            as: "user",
+                            attributes: ["id", "name", "email"],
+                        },
+                    ],
                 },
             ],
             transaction: t,
@@ -420,8 +478,8 @@ export const cancelTransaction = async (req, res) => {
         // Enviar email después de cancelar la transacción
         try {
             await sendTransactionConfirmationEmail(
-                transaction.user.email,
-                transaction.user.name,
+                transaction.plan.user.email,
+                transaction.plan.user.name,
                 "cancelado",
                 transaction.tipo,
                 transaction.monto,
@@ -450,79 +508,5 @@ export const deleteTransaction = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Error deleting transaction" });
-    }
-};
-
-export const getTransactionStats = async (req, res) => {
-    const t = await sequelize.transaction();
-    try {
-        const { idUser } = req.params;
-
-        // Verificar que el usuario existe
-        const user = await User.findByPk(idUser, { transaction: t });
-        if (!user) {
-            await t.rollback();
-            return res.status(404).json({ message: "Usuario no encontrado" });
-        }
-
-        // Obtener fecha actual y calcular fecha de inicio (12 meses atrás)
-        const now = new Date();
-        const twelveMonthsAgo = new Date(now);
-        twelveMonthsAgo.setMonth(now.getMonth() - 11);
-        twelveMonthsAgo.setDate(1);
-        twelveMonthsAgo.setUTCHours(0, 0, 0, 0);
-
-        // Obtener todas las transacciones del usuario
-        const transactions = await Transaction.findAll({
-            where: {
-                idUser,
-                status: "completado",
-            },
-            attributes: [
-                [
-                    sequelize.fn(
-                        "DATE_TRUNC",
-                        "month",
-                        sequelize.col("fechaTransaccion")
-                    ),
-                    "month",
-                ],
-                [
-                    sequelize.literal(
-                        `SUM(CASE WHEN tipo = 'deposito' THEN monto ELSE 0 END)`
-                    ),
-                    "deposito",
-                ],
-                [
-                    sequelize.literal(
-                        `SUM(CASE WHEN tipo = 'retiro' THEN monto ELSE 0 END)`
-                    ),
-                    "retiro",
-                ],
-            ],
-            group: ["month"],
-            order: [
-                [
-                    sequelize.fn(
-                        "DATE_TRUNC",
-                        "month",
-                        sequelize.col("fechaTransaccion")
-                    ),
-                    "ASC",
-                ],
-            ],
-            transaction: t,
-        });
-
-        await t.commit();
-
-        res.status(200).json(transactions);
-    } catch (error) {
-        await t.rollback();
-        console.error("Error en getTransactionStats:", error);
-        res.status(500).json({
-            message: "Error al obtener estadísticas de transacciones",
-            error: error.message,
-        });
     }
 };

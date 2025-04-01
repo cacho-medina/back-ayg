@@ -3,75 +3,41 @@ import Report from "./Report.js";
 import Transaction from "./Transaction.js";
 import Notification from "./Notification.js";
 import File from "./File.js";
-import MovementReport from "./MovementReport.js";
-import MovementItem from "./MovementItem.js";
+import Image from "./Image.js";
+import Plan from "./Plan.js";
 
-// Relación: Un User tiene muchos Reports
-User.hasMany(Report, {
-    foreignKey: "idUser",
+User.hasMany(Image, { foreignKey: "idUser", onDelete: "CASCADE" });
+Image.belongsTo(User, { foreignKey: "idUser" });
+
+User.hasMany(Plan, { foreignKey: "idUser", as: "plans", onDelete: "CASCADE" });
+Plan.belongsTo(User, { foreignKey: "idUser", as: "user" });
+
+Plan.hasMany(Report, {
+    foreignKey: "idPlan",
     as: "reports",
-    onDelete: "CASCADE", // Si se elimina un usuario, se eliminan sus reportes
+    onDelete: "CASCADE",
 });
+Report.belongsTo(Plan, { foreignKey: "idPlan", as: "plan" });
 
-// Relación: Un Report pertenece a un User
-Report.belongsTo(User, {
-    foreignKey: "idUser",
-    as: "user",
-});
+User.hasMany(File, { foreignKey: "idUser", onDelete: "CASCADE" });
+File.belongsTo(User, { foreignKey: "idUser" });
 
-// Relación: Un User tiene muchas Transactions
-User.hasMany(Transaction, {
-    foreignKey: "idUser",
+Plan.hasMany(Transaction, {
+    foreignKey: "idPlan",
     as: "transactions",
-    onDelete: "CASCADE", // Si se elimina un usuario, se eliminan sus transacciones
+    onDelete: "CASCADE",
 });
+Transaction.belongsTo(Plan, { foreignKey: "idPlan", as: "plan" });
 
-// Relación: Una Transaction pertenece a un User
-Transaction.belongsTo(User, {
-    foreignKey: "idUser",
-    as: "user",
-});
+User.hasMany(Notification, { foreignKey: "idUser", onDelete: "CASCADE" });
+Notification.belongsTo(User, { foreignKey: "idUser" });
 
-// Relación: Un User tiene muchas Notifications
-User.hasMany(Notification, {
-    foreignKey: "idUser",
-    as: "notifications",
-});
-
-// Relación: Una Notification pertenece a un User
-Notification.belongsTo(User, {
-    foreignKey: "idUser",
-    as: "user",
-});
-
-// Relación: Un User puede tener muchos Files
-User.hasMany(File, {
-    foreignKey: "idUser",
-    as: "files",
-});
-
-// Relación: Un File puede pertenecer a un User
-File.belongsTo(User, {
-    foreignKey: "idUser",
-    as: "user",
-});
-
-MovementReport.hasMany(MovementItem, {
-    foreignKey: "idMovementReport",
-    as: "movements",
-});
-
-MovementItem.belongsTo(MovementReport, {
-    foreignKey: "idMovementReport",
-    as: "report",
-});
-
-export {
+export default {
     User,
     Report,
     Transaction,
     Notification,
     File,
-    MovementReport,
-    MovementItem,
+    Image,
+    Plan,
 };

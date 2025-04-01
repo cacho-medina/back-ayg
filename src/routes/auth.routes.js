@@ -11,6 +11,7 @@ import {
 } from "../controllers/auth.controllers.js";
 import validateUser from "../helpers/validations/user.validations.js";
 import validatePasswordReset from "../helpers/validations/password.validations.js";
+import validatePlanInfo from "../helpers/validations/plan.validations.js";
 
 const router = Router();
 
@@ -20,6 +21,7 @@ router.post("/register-admin", validateUser, signUpAdmin); //registrar un admin
 router.post(
     "/signup",
     validateUser,
+    validatePlanInfo,
     authTokenJwt,
     authRole(["admin"]),
     signUpUser

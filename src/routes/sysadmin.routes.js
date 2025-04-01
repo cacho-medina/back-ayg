@@ -19,7 +19,7 @@ const router = Router();
 
 router.get("/estadisticas", authTokenJwt, authRole(["admin"]), getEstadisticas);
 router.get("/:idUser/estadisticas", authTokenJwt, getEstadisticasByUser);
-
+//Carga de archivos
 router.post(
     "/upload-file",
     authTokenJwt,
@@ -39,6 +39,7 @@ router.delete(
 );
 
 router.get("/download-file/:filename", authTokenJwt, downloadFile);
+
 //envio de correos personalizados
 router.post("/send-email", authTokenJwt, sendEmail);
 //futura implementacion

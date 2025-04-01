@@ -9,14 +9,6 @@ const Transaction = sequelize.define(
             defaultValue: DataTypes.UUIDV4,
             primaryKey: true,
         },
-        idUser: {
-            type: DataTypes.UUID,
-            allowNull: false,
-            references: {
-                model: "Users",
-                key: "id",
-            },
-        },
         tipo: {
             type: DataTypes.ENUM("deposito", "retiro"),
             allowNull: false,
@@ -32,6 +24,18 @@ const Transaction = sequelize.define(
         fechaTransaccion: {
             type: DataTypes.DATEONLY,
             allowNull: false,
+        },
+        currency: {
+            type: DataTypes.STRING,
+            allowNull: false,
+        },
+        idPlan: {
+            type: DataTypes.UUID,
+            allowNull: false,
+            references: {
+                model: "Plans",
+                key: "id",
+            },
         },
     },
     {

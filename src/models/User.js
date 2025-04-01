@@ -25,7 +25,7 @@ const User = sequelize.define(
         name: { type: DataTypes.STRING, allowNull: false },
         password: { type: DataTypes.STRING, allowNull: false },
         phone: { type: DataTypes.STRING, allowNull: false },
-        key: { type: DataTypes.STRING, allowNull: true }, //para futura implementacion de tarjeta nfc
+        key: { type: DataTypes.STRING, allowNull: true }, //para clave numerica
         cumpleaños: { type: DataTypes.DATEONLY, allowNull: true },
         role: {
             type: DataTypes.ENUM("admin", "client"),
@@ -35,28 +35,6 @@ const User = sequelize.define(
         isActive: {
             type: DataTypes.BOOLEAN,
             defaultValue: true,
-            allowNull: false,
-        },
-        isDeleted: {
-            type: DataTypes.BOOLEAN,
-            defaultValue: false,
-            allowNull: false,
-        },
-        plan: {
-            type: DataTypes.STRING,
-            allowNull: false,
-        },
-        capitalInicial: {
-            type: DataTypes.DOUBLE,
-            allowNull: false,
-        },
-        currency: {
-            type: DataTypes.STRING,
-            allowNull: false,
-            defaultValue: "USD",
-        },
-        capitalActual: {
-            type: DataTypes.DOUBLE,
             allowNull: false,
         },
         fechaRegistro: {

@@ -185,7 +185,8 @@ export const sendTransactionRequestEmail = async (
     name,
     type,
     amount,
-    date
+    date,
+    currency
 ) => {
     const mailOptions = {
         from: `A&G <${process.env.EMAIL_USER}>`,
@@ -208,6 +209,7 @@ export const sendTransactionRequestEmail = async (
                     <li>Tipo de transacción: <strong>${type}</strong></li>
                     <li>Monto: <strong>${formatNumber(amount)}</strong></li>
                     <li>Fecha: <strong>${date}</strong></li>
+                    <li>Moneda: <strong>${currency}</strong></li>
                 </ul>
                 <p>Para aprobar la transacción, por favor ingrese a la siguiente ruta: </p>
                 <a href="${

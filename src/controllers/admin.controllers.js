@@ -4,7 +4,10 @@ import "../models/relations.js";
 import { sendReportEmail } from "../helpers/mails/sendEmail.js";
 import sequelize from "../config/db.js";
 import { Op } from "sequelize";
-import calcularRentaTotal from "../utils/calcularRentaTotal.js";
+import Plan from "../models/Plan.js";
+import { calcularCrecimiento } from "../utils/calcularCrecimiento.js";
+import calcularRenta from "../utils/calcularRenta.js";
+import crearPdf from "../helpers/pdf/pdf-service.js";
 
 export const getClients = async (req, res) => {
     try {
@@ -36,10 +39,10 @@ export const getClients = async (req, res) => {
 
         // Configurar ordenamiento
         const order = [];
-        if (sort === "date_des") {
-            order.push(["fechaRegistro", "DESC"]);
-        } else if (sort === "date_asc") {
+        if (sort === "date_asc") {
             order.push(["fechaRegistro", "ASC"]);
+        } else {
+            order.push(["fechaRegistro", "DESC"]);
         }
 
         // Realizar la consulta con paginación y filtros
@@ -51,6 +54,19 @@ export const getClients = async (req, res) => {
             attributes: {
                 exclude: ["password"],
             },
+            include: [
+                {
+                    model: Plan,
+                    as: "plans",
+                    attributes: [
+                        "id",
+                        "periodo",
+                        "capitalInicial",
+                        "isCurrent",
+                        "currency",
+                    ],
+                },
+            ],
         });
 
         // Calcular información de paginación
@@ -96,7 +112,7 @@ export const getReports = async (req, res) => {
         // Construir objeto de filtros para el include de User
         const userWhere = {};
         if (plan) {
-            userWhere.plan = plan;
+            userWhere.periodo = plan;
         }
 
         // Filtro por rango de fechas
@@ -120,17 +136,21 @@ export const getReports = async (req, res) => {
             offset,
             include: [
                 {
-                    model: User,
-                    as: "user",
+                    model: Plan,
+                    as: "plan",
                     attributes: [
-                        "name",
-                        "plan",
-                        "capitalActual",
-                        "fechaRegistro",
+                        "periodo",
+                        "isCurrent",
                         "currency",
-                        "nroCliente",
+                        "fechaInicio",
                     ],
-                    where: userWhere,
+                    include: [
+                        {
+                            model: User,
+                            as: "user",
+                            attributes: ["name", "nroCliente"],
+                        },
+                    ],
                 },
             ],
         });
@@ -162,15 +182,15 @@ export const getReportById = async (req, res) => {
         const report = await Report.findByPk(req.params.id, {
             include: [
                 {
-                    model: User,
-                    as: "user",
+                    model: Plan,
                     attributes: [
-                        "name",
-                        "plan",
-                        "capitalActual",
+                        "periodo",
+                        "isCurrent",
                         "currency",
-                        "fechaRegistro",
-                        "nroCliente",
+                        "fechaInicio",
+                    ],
+                    include: [
+                        { model: User, attributes: ["name", "nroCliente"] },
                     ],
                 },
             ],
@@ -194,13 +214,12 @@ export const getReportByUserId = async (req, res) => {
         const limit = parseInt(req.query.limit) || 10;
         const offset = (page - 1) * limit;
 
+        const where = {
+            idPlan: req.params.idPlan,
+        };
+
         // Parámetros de filtrado por fecha
         const { fechaDesde, fechaHasta, sort } = req.query;
-
-        // Construir objeto de filtros
-        const where = {
-            idUser: req.params.idUser,
-        };
 
         // Configurar ordenamiento
         const order = [];
@@ -232,15 +251,20 @@ export const getReportByUserId = async (req, res) => {
             offset,
             include: [
                 {
-                    model: User,
-                    as: "user",
+                    model: Plan,
+                    as: "plan",
                     attributes: [
-                        "name",
-                        "plan",
-                        "capitalActual",
-                        "fechaRegistro",
+                        "periodo",
+                        "isCurrent",
                         "currency",
-                        "nroCliente",
+                        "fechaInicio",
+                    ],
+                    include: [
+                        {
+                            model: User,
+                            as: "user",
+                            attributes: ["name", "nroCliente"],
+                        },
                     ],
                 },
             ],
@@ -269,8 +293,9 @@ export const getReportByUserId = async (req, res) => {
 };
 
 export const createReport = async (req, res) => {
-    const { idUser, renta, gananciaGenerada, fechaEmision, extraccion } =
+    const { idUser, idPlan, deposito, extraccion, ganancia, fechaEmision } =
         req.body;
+
     const t = await sequelize.transaction();
 
     try {
@@ -279,28 +304,58 @@ export const createReport = async (req, res) => {
             await t.rollback();
             return res.status(404).json({ message: "Usuario no encontrado" });
         }
+        const plan = await Plan.findByPk(idPlan, { transaction: t });
+        if (!plan) {
+            await t.rollback();
+            return res
+                .status(404)
+                .json({ message: "Plan de usuario no encontrado" });
+        }
 
-        user.capitalActual += gananciaGenerada;
+        const reportesAnteriores = await Report.findAll({
+            where: { idPlan },
+        });
 
+        const gananciaAcumulada = reportesAnteriores.reduce(
+            (acumulado, reporte) => acumulado + reporte.ganancia,
+            0
+        );
+
+        //crear reporte
         const report = await Report.create(
             {
-                idUser,
-                renta,
-                gananciaGenerada,
-                fechaEmision,
+                idPlan,
+                deposito,
                 extraccion,
-                balance: user.capitalActual,
-                rentaTotal: calcularRentaTotal([user.rentaTotal, renta]),
+                ganancia,
+                fechaEmision,
+                nroReporte: reportesAnteriores.length,
+                montoInicial: plan.capitalActual,
+                capitalFinal: plan.capitalActual + ganancia,
+                renta: calcularRenta(ganancia, plan.capitalActual),
+                crecimiento: calcularCrecimiento(
+                    plan.capitalInicial,
+                    plan.capitalActual + ganancia
+                ),
+                rentabilidadTotal: calcularRenta(
+                    gananciaAcumulada + ganancia,
+                    plan.capitalInicial
+                ),
             },
             { transaction: t }
         );
 
-        if (extraccion > 0) {
-            user.capitalActual -= extraccion;
-            await user.save({ transaction: t });
-        }
+        //generar pdf
+        const doc = await crearPdf(report);
 
-        await user.save({ transaction: t });
+        //cargar en la nube DO Spaces
+        //Actualizar el registro del reporte agregando la url del pdf
+        //await Report.update({ url: url }, { where: { id: report.id } });
+        //await report.save({ transaction: t });
+
+        //actualizar informacion de plan
+        plan.capitalActual = report.capitalFinal;
+        await plan.save({ transaction: t });
 
         await t.commit();
 
@@ -316,26 +371,27 @@ export const createReport = async (req, res) => {
         res.status(500).json({ message: "Error al crear el reporte" });
     }
 };
-
+//revisar
 export const deleteReport = async (req, res) => {
     const t = await sequelize.transaction();
 
     try {
-        const report = await Report.findByPk(req.params.id, { transaction: t });
+        const report = await Report.findByPk(req.params.id, {
+            transaction: t,
+        });
         if (!report) {
             await t.rollback();
             return res.status(404).json({ message: "Reporte no encontrado" });
         }
-
-        const user = await User.findByPk(report.idUser, { transaction: t });
-        user.capitalActual -= report.gananciaGenerada;
-        if (report.extraccion > 0) {
-            user.capitalActual += report.extraccion;
-        }
-
-        await user.save({ transaction: t });
         await report.destroy({ transaction: t });
 
+        const plan = await Plan.findByPk(report.idPlan, { transaction: t });
+        if (report.ganancia > 0) {
+            plan.capitalActual -= report.ganancia;
+        } else {
+            plan.capitalActual += report.ganancia;
+        }
+        await plan.save({ transaction: t });
         await t.commit();
         res.status(200).json({ message: "Reporte eliminado exitosamente" });
     } catch (error) {
