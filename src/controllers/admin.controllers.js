@@ -347,11 +347,10 @@ export const createReport = async (req, res) => {
         );
 
         //generar pdf
-        const doc = await generarPdf(report);
-        console.log(doc);
+        const doc = await generarPdf(report, user, plan);
+
         //Subir a cloudinary
         const url = await uploadPdfToCloudinary(doc, report.id);
-        console.log(url);
         //Actualizar el registro del reporte agregando la url del pdf
         await Report.update(
             { url: url },
