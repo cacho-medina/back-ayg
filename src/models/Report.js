@@ -48,9 +48,9 @@ const Report = sequelize.define(
             type: DataTypes.INTEGER,
             allowNull: false,
         },
-        crecimiento: {
-            type: DataTypes.FLOAT,
-            allowNull: false,
+        url: {
+            type: DataTypes.STRING,
+            allowNull: true,
         },
         idPlan: {
             type: DataTypes.UUID,

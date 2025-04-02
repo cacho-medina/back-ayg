@@ -182,10 +182,6 @@ export const getEstadisticas = async (req, res) => {
             capitalTotal: balanceTotal,
             reportesGenerados,
             renta: calcularRenta(gananciaUltimoMes, capitalInicialUltimoMes),
-            crecimiento: calcularCrecimiento(
-                balanceTotal,
-                capitalInicial
-            ).toFixed(2),
             dataMensual: {
                 reportes: reportesUltimoMes,
                 transacciones: transaccionesUltimoMes,

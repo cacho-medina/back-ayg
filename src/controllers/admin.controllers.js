@@ -7,7 +7,8 @@ import { Op } from "sequelize";
 import Plan from "../models/Plan.js";
 import { calcularCrecimiento } from "../utils/calcularCrecimiento.js";
 import calcularRenta from "../utils/calcularRenta.js";
-import crearPdf from "../helpers/pdf/pdf-service.js";
+import { generarPdf } from "../helpers/pdf/generatePDF.js";
+import { uploadPdfToCloudinary } from "../helpers/upload/uploadService.js";
 
 export const getClients = async (req, res) => {
     try {
@@ -346,12 +347,16 @@ export const createReport = async (req, res) => {
         );
 
         //generar pdf
-        const doc = await crearPdf(report);
-
-        //cargar en la nube DO Spaces
+        const doc = await generarPdf(report);
+        console.log(doc);
+        //Subir a cloudinary
+        const url = await uploadPdfToCloudinary(doc, report.id);
+        console.log(url);
         //Actualizar el registro del reporte agregando la url del pdf
-        //await Report.update({ url: url }, { where: { id: report.id } });
-        //await report.save({ transaction: t });
+        await Report.update(
+            { url: url },
+            { where: { id: report.id }, transaction: t }
+        );
 
         //actualizar informacion de plan
         plan.capitalActual = report.capitalFinal;
