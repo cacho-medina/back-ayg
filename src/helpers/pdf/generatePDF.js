@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { formatDate } from "../../utils/dateUtils.js";
+import formatNumber from "../../utils/formatNumber.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -87,10 +88,10 @@ export const generarPdf = async (report, user, plan) => {
                 datas: [
                     {
                         mes: formatDate(report.fechaEmision),
-                        capital: report.montoInicial,
-                        renta: report.renta.toFixed(2),
-                        ganancia: report.ganancia,
-                        extraccion: report.extraccion,
+                        capital: `$${formatNumber(report.montoInicial)}`,
+                        renta: `${report.renta.toFixed(2)}%`,
+                        ganancia: `$${formatNumber(report.ganancia)}`,
+                        extraccion: `$${formatNumber(report.extraccion)}`,
                     },
                 ],
             };

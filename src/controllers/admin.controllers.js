@@ -296,7 +296,7 @@ export const getReportByUserId = async (req, res) => {
 export const createReport = async (req, res) => {
     const { idUser, idPlan, deposito, extraccion, ganancia, fechaEmision } =
         req.body;
-
+    console.log("ganancia", ganancia);
     const t = await sequelize.transaction();
 
     try {
@@ -375,7 +375,7 @@ export const createReport = async (req, res) => {
         res.status(500).json({ message: "Error al crear el reporte" });
     }
 };
-//revisar
+
 export const deleteReport = async (req, res) => {
     const t = await sequelize.transaction();
 
@@ -387,15 +387,16 @@ export const deleteReport = async (req, res) => {
             await t.rollback();
             return res.status(404).json({ message: "Reporte no encontrado" });
         }
-        await report.destroy({ transaction: t });
 
         const plan = await Plan.findByPk(report.idPlan, { transaction: t });
+
         if (report.ganancia > 0) {
             plan.capitalActual -= report.ganancia;
         } else {
-            plan.capitalActual += report.ganancia;
+            plan.capitalActual += Math.abs(report.ganancia);
         }
         await plan.save({ transaction: t });
+        await report.destroy({ transaction: t });
         await t.commit();
         res.status(200).json({ message: "Reporte eliminado exitosamente" });
     } catch (error) {
