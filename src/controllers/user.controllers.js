@@ -218,3 +218,74 @@ export const changeUserStatus = async (req, res) => {
         res.status(500).json({ message: "Error updating user status" });
     }
 };
+
+export const editUserPlan = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const {
+            planId,
+            capitalActual,
+            capitalInicial,
+            fechaInicio,
+            currency,
+            periodo,
+            isCurrent,
+        } = req.body;
+
+        if (!planId) {
+            return res.status(400).json({
+                message: "Se requiere planId para actualizar el plan",
+            });
+        }
+        //veridica que el usuario exista
+        const user = await User.findByPk(id);
+        if (!user) {
+            return res.status(404).json({ message: "Usuario no encontrado" });
+        }
+        //veridica que el plan exista
+        const plan = await Plan.findByPk(planId);
+        if (!plan) {
+            return res.status(404).json({ message: "Plan no encontrado" });
+        }
+        //veridica que el plan no este inactivo
+        if (!plan.isCurrent) {
+            return res.status(400).json({ message: "Plan actual no activo" });
+        }
+        //veridica que el plan este asociado al usuario
+        if (plan.idUser !== id) {
+            return res
+                .status(400)
+                .json({ message: "Plan no asociado a usuario" });
+        }
+        // Solo actualizar los campos enviados
+        const updates = {};
+        if (capitalActual !== "") updates.capitalActual = Number(capitalActual);
+        if (capitalInicial !== "")
+            updates.capitalInicial = Number(capitalInicial);
+        if (fechaInicio !== "") updates.fechaInicio = fechaInicio;
+        if (currency !== "") updates.currency = currency;
+        if (periodo !== "") updates.periodo = periodo;
+        if (isCurrent !== "") updates.isCurrent = isCurrent;
+
+        await plan.update(updates);
+        res.status(200).json(plan);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error al editar el usuario" });
+    }
+};
+
+/* export const createUserPlan = async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { planId } = req.body;
+            const user = await User.findByPk(id);
+            if (!user) {
+                return res.status(404).json({ message: "Usuario no encontrado" });
+            }
+
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ message: "Error al crear el plan" });
+        }
+    }; */

@@ -7,6 +7,7 @@ import {
     changeUserStatus,
     activateUser,
     getUserByName,
+    editUserPlan,
 } from "../controllers/user.controllers.js";
 import { getClients } from "../controllers/admin.controllers.js";
 import authTokenJwt from "../middleware/authTokenJwt.js";
@@ -26,6 +27,12 @@ router.patch(
     authTokenJwt,
     authRole(["admin"]),
     changeUserStatus
+);
+router.patch(
+    "/update/user-plan/:id",
+    authTokenJwt,
+    authRole(["admin"]),
+    editUserPlan
 );
 
 export default router;
