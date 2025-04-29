@@ -264,7 +264,7 @@ export const requestTransaction = async (req, res) => {
                 tipo,
                 monto,
                 fechaTransaccion,
-                currency
+                currency || plan.currency
             );
         } catch (emailError) {
             console.error("Error al enviar email:", emailError);

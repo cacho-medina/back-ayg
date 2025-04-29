@@ -190,7 +190,7 @@ export const sendTransactionRequestEmail = async (
 ) => {
     const mailOptions = {
         from: `A&G <${process.env.EMAIL_USER}>`,
-        to: process.env.EMAIL_USER,
+        to: `${process.env.EMAIL_USER}, albornozyguerineau@gmail.com`,
         subject: "⚠️ Nueva solicitud de transacción pendiente de aprobación",
         html: `
         <div style="max-width: 600px; margin: 0 auto;">
