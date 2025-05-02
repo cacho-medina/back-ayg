@@ -31,6 +31,11 @@ export const getEstadisticas = async (req, res) => {
         // Calcular primer día del mes actual y del mes anterior
         const inicioMesActual = new Date(currentYear, currentMonth, 1);
         const inicioMesSiguiente = new Date(currentYear, currentMonth + 1, 1);
+
+        // Calcular la fecha de inicio para los últimos 12 meses (inicio del mes hace un año)
+        const inicioHaceUnAnio = new Date(inicioMesActual);
+        inicioHaceUnAnio.setUTCFullYear(inicioMesActual.getUTCFullYear() - 1);
+
         //balance total, capital inicial y usuarios activos
         const [balanceTotal, usuariosActivos, capitalInicial] =
             await Promise.all([
@@ -116,6 +121,7 @@ export const getEstadisticas = async (req, res) => {
         const monthlyStats = await Report.findAll({
             where: {
                 fechaEmision: {
+                    [Op.gte]: inicioHaceUnAnio, // Filtra desde hace un año
                     [Op.lt]: inicioMesSiguiente,
                 },
             },
@@ -222,20 +228,42 @@ export const getEstadisticasByUser = async (req, res) => {
             0
         );
 
+        const transactions = await Transaction.findAll({
+            where: {
+                idPlan: plan.id,
+            },
+            attributes: ["fechaTransaccion", "monto", "tipo"],
+            order: [["fechaTransaccion", "ASC"]],
+        });
+
+        const ingresoAcumulado = transactions.reduce(
+            (acumulado, transaction) =>
+                acumulado +
+                (transaction.tipo === "deposito" ? transaction.monto : 0),
+            0
+        );
+
         const rentaTotal = calcularRenta(
             gananciaAcumulada,
-            plan.capitalInicial
+            plan.capitalActual - ingresoAcumulado
         );
+
+        const dataMensual = reports.map((report) => ({
+            fecha: report.fechaEmision,
+            mes: obtenerMes(report.fechaEmision),
+            renta: report.renta.toFixed(2),
+            ganancia: report.ganancia,
+            balance: report.capitalFinal,
+        }));
+
+        const dataMensualFinal =
+            dataMensual.length >= 12
+                ? dataMensual.slice(-12) // Obtiene los últimos 12 elementos
+                : dataMensual;
 
         res.status(200).json({
             montoTotal: plan.capitalActual,
-            dataMensual: reports.map((report) => ({
-                fecha: report.fechaEmision,
-                mes: obtenerMes(report.fechaEmision),
-                renta: report.renta.toFixed(2),
-                ganancia: report.ganancia,
-                balance: report.capitalFinal,
-            })),
+            dataMensual: dataMensualFinal,
             rentaTotal: rentaTotal.toFixed(2),
         });
     } catch (error) {

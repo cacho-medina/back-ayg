@@ -257,7 +257,7 @@ export const requestTransaction = async (req, res) => {
         await t.commit();
 
         // Enviar email informando la solicitud de la transacción
-        try {
+        /* try {
             await sendTransactionRequestEmail(
                 plan.user.email,
                 plan.user.name,
@@ -269,7 +269,7 @@ export const requestTransaction = async (req, res) => {
         } catch (emailError) {
             console.error("Error al enviar email:", emailError);
             // No revertimos la transacción si falla el email
-        }
+        } */
 
         res.status(201).json({
             message: "Solicitud de transacción creada exitosamente",
@@ -330,7 +330,7 @@ export const extraccion = async (req, res) => {
         await t.commit();
 
         // Enviar email después de confirmar la transacción
-        try {
+        /* try {
             await sendTransactionConfirmationEmail(
                 plan.user.email,
                 plan.user.name,
@@ -342,7 +342,7 @@ export const extraccion = async (req, res) => {
         } catch (emailError) {
             console.error("Error al enviar email:", emailError);
             // No revertimos la transacción si falla el email
-        }
+        } */
 
         res.status(200).json({
             message: "Solicitud de retiro resuelta exitosamente",
@@ -406,7 +406,7 @@ export const deposito = async (req, res) => {
         await t.commit();
 
         // Enviar email después de confirmar la transacción
-        try {
+        /* try {
             await sendTransactionConfirmationEmail(
                 plan.user.email,
                 plan.user.name,
@@ -418,7 +418,7 @@ export const deposito = async (req, res) => {
         } catch (emailError) {
             console.error("Error al enviar email:", emailError);
             // No revertimos la transacción si falla el email
-        }
+        } */
 
         res.status(200).json({
             message: "Solicitud de deposito resuelta exitosamente",
@@ -476,7 +476,7 @@ export const cancelTransaction = async (req, res) => {
         await t.commit();
 
         // Enviar email después de cancelar la transacción
-        try {
+        /* try {
             await sendTransactionConfirmationEmail(
                 transaction.plan.user.email,
                 transaction.plan.user.name,
@@ -488,7 +488,7 @@ export const cancelTransaction = async (req, res) => {
         } catch (emailError) {
             console.error("Error al enviar email:", emailError);
             // No revertimos la transacción si falla el email
-        }
+        } */
 
         res.status(200).json({
             message: "Solicitud de transacción cancelada exitosamente",
