@@ -107,7 +107,7 @@ export const signUpUser = async (req, res) => {
         );
 
         // Enviar email de bienvenida
-        //await sendWelcomeEmail(email, name, password);
+        await sendWelcomeEmail(email, name, password);
 
         // Crear un reporte inicial para el usuario
         const report = await Report.create(
@@ -195,13 +195,13 @@ export const signUpAdmin = async (req, res) => {
             { transaction: t }
         );
 
-        /* try {
+        try {
             // Enviar email de bienvenida
             await sendWelcomeEmail(email, name, password);
         } catch (emailError) {
             // Log del error pero continuamos con la transacción
             console.error("Error enviando email de bienvenida:", emailError);
-        } */
+        }
 
         // Confirmar la transacción
         await t.commit();

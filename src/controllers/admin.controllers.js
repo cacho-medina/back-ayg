@@ -363,7 +363,7 @@ export const createReport = async (req, res) => {
 
         await t.commit();
 
-        //await sendReportEmail(user.email, user.name);
+        await sendReportEmail(user.email, user.name);
 
         res.status(201).json({
             message: "Reporte creado exitosamente",
