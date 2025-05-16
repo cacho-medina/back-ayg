@@ -285,7 +285,7 @@ export const sendTransactionConfirmationEmail = async (
 export const sendCustomEmail = async (email, name, subject, message) => {
     const mailOptions = {
         from: `A&G <${process.env.EMAIL_USER}>`,
-        to: `A&G <${process.env.EMAIL_USER}>`,
+        to: `${process.env.EMAIL_USER}, albornozyguerineau@gmail.com`,
         subject: subject,
         html: `
         <div style="max-width: 600px; margin: 0 auto;">

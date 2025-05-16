@@ -10,8 +10,7 @@ import File from "../models/File.js";
 import Plan from "../models/Plan.js";
 import Transaction from "../models/Transaction.js";
 import calcularRenta from "../utils/calcularRenta.js";
-import calcularRentaTotal from "../utils/calcularRentaTotal.js";
-import { calcularCrecimiento } from "../utils/calcularCrecimiento.js";
+import { uploadPdfToCloudinary } from "../helpers/upload/uploadService.js";
 
 const obtenerMes = (fecha) => {
     return new Intl.DateTimeFormat("es-ES", {
@@ -341,21 +340,31 @@ export const uploadFile = async (req, res) => {
         }
 
         // Crear registro en la tabla Files
-        const file = await File.create(
+        const newFileEntry = await File.create(
             {
                 idUser: idUser || null,
                 name: titulo || req.file.filename,
                 type: proposito,
-                link: `${process.env.BACKEND_URL}/uploads/${titulo}`,
+                // link se establecerá después de subir a Cloudinary
             },
             { transaction: t }
         );
+
+        //Subir a cloudinary
+        const cloudinaryUrl = await uploadPdfToCloudinary(
+            req.file.path,
+            newFileEntry.name
+        );
+
+        //Actualizar el registro del archivo agregando la url
+        // await File.update({ link: url }, { where: { id: file.id }, transaction: t }); // Línea original comentada
+        await newFileEntry.update({ link: cloudinaryUrl }, { transaction: t });
 
         await t.commit();
 
         res.status(200).json({
             message: "Archivo subido exitosamente",
-            file,
+            file: newFileEntry, // Se devuelve la entrada actualizada
         });
     } catch (error) {
         await t.rollback();
