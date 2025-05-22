@@ -296,7 +296,6 @@ export const getReportByUserId = async (req, res) => {
 export const createReport = async (req, res) => {
     const { idUser, idPlan, ingreso, extraccion, ganancia, fechaEmision } =
         req.body;
-    console.log("ganancia", ganancia);
     const t = await sequelize.transaction();
 
     try {

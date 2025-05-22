@@ -198,13 +198,20 @@ export const changeUserStatus = async (req, res) => {
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
-        if (!user.isActive) {
-            return res.status(400).json({ message: "User is inactive" });
-        }
         if (user.isActive === isActive) {
             return res.status(400).json({
                 message: `User status is already ${isActive}`,
             });
+        }
+        const plan = await Plan.findOne({
+            where: {
+                idUser: id,
+            },
+        });
+        //si el usuario tiene un plan actual activo, se desactiva
+        if (plan && plan.isCurrent) {
+            plan.isCurrent = isActive;
+            await plan.save();
         }
         // Cambiar estado activo del usuario
         user.isActive = isActive;
