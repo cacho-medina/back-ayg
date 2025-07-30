@@ -37,6 +37,10 @@ const Transaction = sequelize.define(
                 key: "id",
             },
         },
+        detalle: {
+            type: DataTypes.STRING(500),
+            allowNull: true,
+        },
     },
     {
         timestamps: false,

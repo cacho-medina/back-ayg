@@ -44,18 +44,19 @@ export const getUsers = async (req, res) => {
             offset,
             attributes: {
                 exclude: ["password"], // Excluir el campo password de la respuesta
-                include: [
-                    {
-                        model: Plan,
-                        attributes: [
-                            "periodo",
-                            "capitalInicial",
-                            "isCurrent",
-                            "currency",
-                        ],
-                    },
-                ],
             },
+            include: [
+                {
+                    model: Plan,
+                    as: "plans",
+                    attributes: [
+                        "periodo",
+                        "capitalInicial",
+                        "isCurrent",
+                        "currency",
+                    ],
+                },
+            ],
         });
 
         // Calcular información de paginación
@@ -133,7 +134,7 @@ export const getUserById = async (req, res) => {
 
 export const updateUser = async (req, res) => {
     try {
-        const { name, email, cumpleaños, phone } = req.body;
+        const { name, email, cumpleaños, phone, secondaryEmail } = req.body;
         const user = await User.findByPk(req.params.id);
         if (!user) {
             return res.status(404).json({ message: "Usuario no encontrado" });
@@ -146,6 +147,7 @@ export const updateUser = async (req, res) => {
             email: email || user.email,
             cumpleaños: cumpleaños || user.cumpleaños,
             phone: phone || user.phone,
+            secondaryEmail: secondaryEmail || user.secondaryEmail,
         });
         await user.save();
         res.status(200).json(user);

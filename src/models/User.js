@@ -22,6 +22,14 @@ const User = sequelize.define(
                 notNull: true,
             },
         },
+        secondaryEmail: {
+            type: DataTypes.STRING,
+            unique: true,
+            allowNull: true,
+            validate: {
+                isEmail: true,
+            },
+        },
         name: { type: DataTypes.STRING, allowNull: false },
         password: { type: DataTypes.STRING, allowNull: false },
         phone: { type: DataTypes.STRING, allowNull: false },

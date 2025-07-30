@@ -12,6 +12,7 @@ import {
     sendWp,
     uploadFile,
     deleteFile,
+    sendEmailForTest,
 } from "../controllers/sysadmin.controllers.js";
 import upload from "../middleware/upload.js";
 
@@ -42,6 +43,7 @@ router.get("/download-file/:filename", authTokenJwt, downloadFile);
 
 //envio de correos personalizados
 router.post("/send-email", authTokenJwt, sendEmail);
+//router.post("/send-email-test", sendEmailForTest);
 //futura implementacion
 router.post("/send-wp", authTokenJwt, authRole(["admin"]), sendWp);
 

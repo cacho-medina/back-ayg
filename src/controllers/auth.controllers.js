@@ -59,6 +59,7 @@ export const signUpUser = async (req, res) => {
             plan,
             currency,
             capitalInicial,
+            secondaryEmail,
         } = req.body;
 
         // Verificar si el usuario ya existe
@@ -88,6 +89,7 @@ export const signUpUser = async (req, res) => {
                 isActive: true,
                 fechaRegistro,
                 phone,
+                secondaryEmail,
             },
             { transaction: t }
         );

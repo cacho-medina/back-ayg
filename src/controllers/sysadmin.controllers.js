@@ -5,7 +5,7 @@ import Report from "../models/Report.js";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
-import { sendCustomEmail } from "../helpers/mails/sendEmail.js";
+import { sendCustomEmail, sendEmailTest } from "../helpers/mails/sendEmail.js";
 import File from "../models/File.js";
 import Plan from "../models/Plan.js";
 import Transaction from "../models/Transaction.js";
@@ -309,6 +309,28 @@ export const sendEmail = async (req, res) => {
         res.status(500).json({
             message: "Error al enviar el email",
             error: error.message,
+        });
+    }
+};
+
+//controller para enviar correos de prueba
+export const sendEmailForTest = async (req, res) => {
+    const { email } = req.body;
+    if (!email) {
+        return res.status(400).json({
+            message: "Faltan campos requeridos (email)",
+        });
+    }
+    try {
+        await sendEmailTest(email);
+
+        res.status(200).json({
+            message: "Email enviado exitosamente",
+        });
+    } catch (error) {
+        console.error("Error al enviar email:", error);
+        return res.status(500).json({
+            message: "Error al enviar el correo",
         });
     }
 };

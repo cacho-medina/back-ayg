@@ -510,3 +510,86 @@ export const deleteTransaction = async (req, res) => {
         res.status(500).json({ message: "Error deleting transaction" });
     }
 };
+
+export const registerTransaction = async (req, res) => {
+    const t = await sequelize.transaction();
+    try {
+        const { idPlan, monto, tipo, fechaTransaccion, currency, detalle } =
+            req.body;
+
+        const plan = await Plan.findByPk(idPlan, {
+            include: [
+                {
+                    model: User,
+                    as: "user",
+                    attributes: ["id", "name", "email"],
+                },
+            ],
+            transaction: t,
+        });
+        if (!plan) {
+            await t.rollback();
+            return res.status(404).json({ message: "Plan no encontrado" });
+        }
+        // Validar retiro
+        if (tipo === "retiro" && plan.capitalActual < monto) {
+            await t.rollback();
+            return res.status(400).json({
+                message:
+                    "No tienes suficiente capital para realizar esta extracción",
+            });
+        }
+
+        // Crear la transacción directamente como completada
+        const transaction = await Transaction.create(
+            {
+                idPlan,
+                monto,
+                tipo,
+                fechaTransaccion,
+                currency: currency || plan.currency,
+                status: "completado",
+                detalle,
+            },
+            { transaction: t }
+        );
+
+        // Actualizar capital según el tipo
+        if (tipo === "deposito") {
+            plan.capitalActual += monto;
+        } else if (tipo === "retiro") {
+            plan.capitalActual -= monto;
+        }
+
+        await plan.save({ transaction: t });
+        await t.commit();
+        // Enviar email de confirmación
+        /* try {
+            await sendTransactionConfirmationEmail(
+                plan.user.email,
+                plan.user.name,
+                "completado",
+                tipo,
+                monto,
+                fechaTransaccion
+            );
+        } catch (emailError) {
+            console.error("Error al enviar email:", emailError);
+        } */
+
+        res.status(201).json({
+            message: `${
+                tipo === "deposito" ? "Depósito" : "Retiro"
+            } procesado exitosamente`,
+            transaction,
+            capitalActual: plan.capitalActual,
+        });
+    } catch (error) {
+        await t.rollback();
+        console.error("Error en createDirectTransaction:", error);
+        res.status(500).json({
+            message: "Error al procesar la transacción",
+            error: error.message,
+        });
+    }
+};

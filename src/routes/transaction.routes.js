@@ -10,6 +10,7 @@ import {
     getTransactionByUserId,
     getTransactions,
     requestTransaction,
+    registerTransaction,
 } from "../controllers/client.controllers.js";
 
 const router = Router();
@@ -19,6 +20,12 @@ router.get("/:idPlan", authTokenJwt, getTransactionByUserId);
 router.get("/id/:id", authTokenJwt, authRole(["admin"]), getTransactionById);
 router.patch("/retiro", authTokenJwt, authRole(["admin"]), extraccion);
 router.patch("/deposito", authTokenJwt, authRole(["admin"]), deposito);
+router.post(
+    "/register",
+    authTokenJwt,
+    authRole(["admin"]),
+    registerTransaction
+);
 router.post("/new", authTokenJwt, requestTransaction);
 router.patch(
     "/cancel/:id",
